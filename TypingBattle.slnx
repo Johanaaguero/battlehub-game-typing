@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/backend/">
+    <Project Path="src/backend/TypingBattle.Api/TypingBattle.Api.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/TypingBattle.IntegrationTests/TypingBattle.IntegrationTests.csproj" />
+    <Project Path="tests/TypingBattle.UnitTests/TypingBattle.UnitTests.csproj" />
+  </Folder>
+</Solution>
