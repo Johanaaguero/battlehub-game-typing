@@ -1,8 +1,6 @@
-
-
 # BattleHub - Typing Battle
 
-Microservicio del Equipo 4 responsable del juego **Typing Battle** dentro de la plataforma BattleHub.
+Microservicio del Equipo 4 responsable del juego **Typing Battle** dentro de la plataforma BattleHub. Implementa los contratos de [`battlehub-contracts`](https://github.com/javiercoulon-public/battlehub-contracts), la fuente de verdad del proyecto.
 
 ## Responsabilidades
 
@@ -16,19 +14,112 @@ Este servicio será responsable de:
 - Proporcionar el microfrontend correspondiente al juego.
 - Incluir pruebas unitarias y de integración.
 
-## Estructura inicial
+## Stack
+
+| Capa | Tecnología |
+|---|---|
+| Backend | .NET 10 (API REST; hub SignalR en `/hubs/typing`) |
+| Base de datos | MySQL 8 con Entity Framework Core y migraciones ([ADR-005](https://github.com/javiercoulon-public/battlehub-contracts/blob/main/adrs/ADR-005-motor-bd-juego-typing.md)) |
+| Microfrontend | Aurelia con Module Federation |
+| CI | GitHub Actions |
+
+## Estructura
 
 ```text
 battlehub-game-typing/
-├── .github/
-│   └── workflows/
+├── .github/workflows/ci.yml           → pipeline de CI (build, pruebas unitarias y de integración con MySQL)
 ├── docs/
+│   └── api-resultados.md              → referencia de la API REST de resultados
 ├── src/
 │   └── backend/
 │       └── TypingBattle.Api/
+│           ├── Common/                → utilidades (fechas UTC)
+│           ├── Persistence/           → DbContext MySQL, entidades y Migrations/
+│           └── Results/               → validación, servicio y endpoints de resultados, historial y estadísticas
 ├── tests/
-│   ├── TypingBattle.UnitTests/
-│   └── TypingBattle.IntegrationTests/
+│   ├── TypingBattle.UnitTests/        → pruebas unitarias (Category=Unit)
+│   └── TypingBattle.IntegrationTests/ → pruebas de integración contra MySQL real (Category=Integration)
+├── docker-compose.yml                 → MySQL local para desarrollo y pruebas
+├── dotnet-tools.json                  → herramienta local dotnet-ef
 ├── .gitignore
 ├── README.md
 └── TypingBattle.slnx
+```
+
+## Backend: cómo correrlo localmente
+
+Requisitos: el [SDK de .NET 10](https://dotnet.microsoft.com/download) y un MySQL 8. La forma más simple de tener MySQL es Docker:
+
+```bash
+docker compose up -d mysql
+```
+
+Eso levanta MySQL 8.4 en `localhost:3306` con la base `typing_battle` y el usuario `typing` / `typing_dev` (credenciales solo de desarrollo, ya configuradas en `appsettings.Development.json`). Si prefieren un MySQL instalado en su máquina, creen esa base y ese usuario, o cambien `ConnectionStrings:Typing`.
+
+```bash
+dotnet run --project src/backend/TypingBattle.Api
+```
+
+La API queda en `http://localhost:5015`. En Development aplica las migraciones pendientes al arrancar (`Database:MigrateOnStartup`). Comprobación de salud en `/health` y documento OpenAPI en `/openapi/v1.json`. Los orígenes que el navegador puede usar para llamar a la API se configuran en `Cors:AllowedOrigins`.
+
+```bash
+curl http://localhost:5015/api/games/typing/players/user-001/stats
+```
+
+La API completa, con ejemplos, está en [`docs/api-resultados.md`](docs/api-resultados.md).
+
+### Configuración fuera de Development
+
+| Variable de entorno | Para qué |
+|---|---|
+| `ConnectionStrings__Typing` | Cadena de conexión a MySQL (obligatoria: la API no arranca sin ella) |
+| `Database__MigrateOnStartup` | `true` para aplicar las migraciones al arrancar (por defecto `false`) |
+| `Cors__AllowedOrigins__0`, `__1`… | Orígenes del Shell / microfrontend |
+
+### Migraciones
+
+El esquema solo cambia con migraciones de EF Core. La herramienta `dotnet-ef` está fijada en `dotnet-tools.json`:
+
+```bash
+dotnet tool restore
+```
+
+Crear una migración después de cambiar las entidades o el `TypingDbContext`:
+
+```bash
+dotnet ef migrations add NombreDelCambio --project src/backend/TypingBattle.Api --output-dir Persistence/Migrations
+```
+
+Aplicarlas a la base configurada (toma `ConnectionStrings__Typing` si existe; si no, el MySQL de docker-compose):
+
+```bash
+dotnet ef database update --project src/backend/TypingBattle.Api
+```
+
+El CI falla si el modelo cambió y falta la migración (`dotnet ef migrations has-pending-model-changes`).
+
+### Pruebas
+
+Las mismas que corre el CI:
+
+```bash
+dotnet test --filter "Category=Unit"
+```
+
+```bash
+dotnet test --filter "Category=Integration"
+```
+
+Las de integración levantan la API completa contra MySQL real: cada clase crea su propia base `typing_test_…`, le aplica las migraciones y la borra al terminar. Usan el MySQL de docker-compose; para otro servidor, configuren `TYPING_TEST_MYSQL` con una cadena sin `Database` y un usuario que pueda crear y borrar bases (por ejemplo `Server=localhost;Port=3306;User ID=root;Password=...`).
+
+### Uso desde el hub
+
+El hub `/hubs/typing` corre en el mismo proceso y guarda el resultado al terminar la partida inyectando `IResultsService` (ver [`docs/api-resultados.md`](docs/api-resultados.md#desde-el-backend-del-hub-sin-http)).
+
+## Flujo de trabajo
+
+- `main` está protegida: sin push directo; todo entra por Pull Request con CI en verde y al menos 1 aprobación.
+- Commits y títulos de PR en formato semántico: `<tipo>(<alcance opcional>): <descripción en imperativo>`. Tipos: `feat`, `fix`, `docs`, `test`, `refactor`, `chore`, `ci`, `perf`.
+- Las pruebas de .NET se etiquetan `[Trait("Category", "Unit")]` o `[Trait("Category", "Integration")]`, porque el CI las filtra por categoría.
+- Todas las fechas y timestamps van en UTC, formato ISO-8601 con sufijo `Z`.
+- Nada de secretos en el repo: usar variables de entorno.
