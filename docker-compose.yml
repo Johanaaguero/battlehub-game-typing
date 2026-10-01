@@ -1,0 +1,28 @@
+# MySQL local para desarrollo y pruebas de integración de Typing Battle (ADR-005).
+# Las credenciales son solo para desarrollo local; coinciden con appsettings.Development.json
+# y con el valor por defecto de las pruebas de integración (TYPING_TEST_MYSQL).
+#
+#   docker compose up -d mysql
+#   docker compose down        (agregar -v para borrar también los datos)
+
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: typing-battle-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: typing_root
+      MYSQL_DATABASE: typing_battle
+      MYSQL_USER: typing
+      MYSQL_PASSWORD: typing_dev
+    ports:
+      - "3306:3306"
+    volumes:
+      - typing-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-ptyping_root"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  typing-mysql-data:

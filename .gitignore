@@ -480,3 +480,18 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# ===== Plantilla BattleHub (battlehub-contracts/helpers/gitignore-template.txt) =====
+.env.*
+!.env.example
+appsettings.Local.json
+*.pem
+*.sqlite
+*.sqlite3
+*.db
+TestResults/
+*.trx
+dist/
+build/
+coverage/
+npm-debug.log*
