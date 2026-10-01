@@ -1,0 +1,66 @@
+# CI del Equipo 4 (Typing Battle).
+# Implementa 05-cicd-testing-commits.md de battlehub-contracts: en cada PR hacia main (y en cada
+# push a main) se ejecutan restore, build, pruebas unitarias y pruebas de integración del backend.
+# Las pruebas de integración corren contra un MySQL 8.4 real (ADR-005), levantado como servicio.
+#
+# No agregar filtros "paths:" a los triggers: si un check obligatorio no se ejecuta,
+# el PR queda esperándolo indefinidamente.
+# Cuando exista el microfrontend (Aurelia) se agrega aquí su propio job (install, build, lint y pruebas).
+
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend (.NET 10)
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: ci_root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pci_root"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    env:
+      DOTNET_NOLOGO: true
+      TYPING_TEST_MYSQL: "Server=127.0.0.1;Port=3306;User ID=root;Password=ci_root"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore
+        run: |
+          dotnet restore
+          dotnet tool restore
+
+      - name: Build
+        run: dotnet build --no-restore
+
+      - name: Migraciones al día con el modelo
+        run: dotnet ef migrations has-pending-model-changes --project src/backend/TypingBattle.Api --no-build
+
+      - name: Unit tests
+        run: dotnet test --no-build --filter "Category=Unit"
+
+      - name: Integration tests
+        run: dotnet test --no-build --filter "Category=Integration"
