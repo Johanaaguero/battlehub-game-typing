@@ -18,7 +18,7 @@ Reglas comunes:
 - Los ids de jugador pueden traer caracteres especiales (los de Auth0 son `auth0|64f0c1...`): en la URL hay que codificarlos (`encodeURIComponent`). Los ids distinguen mayúsculas y minúsculas.
 - Errores de validación: `400` con formato `application/problem+json` y el detalle en `errors`, por campo.
 
-> **Autenticación:** todavía no está aplicada. Los endpoints quedan abiertos hasta que el equipo defina cómo se validan los JWT de Auth0 en los juegos.
+> **Autenticación:** todos los endpoints exigen un usuario autenticado (`401` si no hay). Con Auth0, un JWT en `Authorization: Bearer`; en desarrollo local (`Auth:Mode=Development`), el encabezado `X-Dev-User`. Los `GET` piden además `Auth:RequiredPermission` si está configurado (por ejemplo `games.typing.play`). `POST /results` exige el permiso `games.typing.results.write` (`403` sin él): es para servicios, porque el hub guarda el resultado sin pasar por HTTP. El detalle está en el README.
 
 ## Desde el backend del hub (sin HTTP)
 

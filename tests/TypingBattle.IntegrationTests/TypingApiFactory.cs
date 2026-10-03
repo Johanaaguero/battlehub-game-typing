@@ -36,6 +36,8 @@ public sealed class TypingApiFactory : WebApplicationFactory<Program>, IAsyncLif
         builder.UseEnvironment("Testing");
         builder.UseSetting("ConnectionStrings:Typing", ConnectionString);
         builder.UseSetting("Database:MigrateOnStartup", "true");
+        // Identidad de desarrollo (X-Dev-User / dev_user): las pruebas no dependen de un tenant de Auth0.
+        builder.UseSetting("Auth:Mode", "Development");
     }
 
     public async Task InitializeAsync()

@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using System.Net;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
@@ -39,14 +38,7 @@ public class MatchmakingNotificationTests(TypingApiFactory factory) : IClassFixt
                 .AddHttpClient(MatchmakingClient.HttpClientName)
                 .ConfigurePrimaryHttpMessageHandler(() => matchmaking));
         });
-        var http = app.CreateClient();
-        await using var connection = new HubConnectionBuilder()
-            .WithUrl(new Uri(http.BaseAddress!, "/hubs/typing"), options =>
-            {
-                options.Transports = HttpTransportType.LongPolling;
-                options.HttpMessageHandlerFactory = _ => app.Server.CreateHandler();
-            })
-            .Build();
+        await using var connection = app.CreateHubConnection("ana");
         await connection.StartAsync();
 
         var matchId = $"match-{Guid.NewGuid():N}";

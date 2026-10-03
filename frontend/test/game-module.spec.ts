@@ -1,6 +1,7 @@
 import { createFixture } from '@aurelia/testing';
 import { GameModule } from '../src/game-module';
 import type { GameContext } from '../src/game-contracts';
+import { SignalRClient } from '../src/signalr-client';
 import template from '../src/game-module.html';
 
 // Cliente SignalR simulado: las pruebas no abren conexiones reales.
@@ -190,5 +191,64 @@ describe('GameModule (plantilla)', () => {
 
   it('el área de escritura no trae texto inicial (la sangría del HTML desalinearía todo lo escrito)', () => {
     expect(template).toMatch(/<textarea[^>]*><\/textarea>/);
+  });
+});
+
+describe('GameModule (autenticación y URL de la API)', () => {
+  const realFetch = globalThis.fetch;
+  let fetchMock: jest.Mock;
+
+  beforeEach(() => {
+    resetClient();
+    jest.spyOn(console, 'log').mockImplementation(() => undefined);
+    fetchMock = jest.fn().mockResolvedValue({ ok: true, json: async () => [] });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+  });
+
+  afterEach(() => {
+    globalThis.fetch = realFetch;
+    jest.restoreAllMocks();
+  });
+
+  function lastHubClientArgs(): [string, { accessTokenFactory?: () => Promise<string>; devUser?: unknown }] {
+    const calls = (SignalRClient as unknown as jest.Mock).mock.calls;
+    return calls[calls.length - 1];
+  }
+
+  it('sin token del Shell usa la identidad de desarrollo en el hub y en la API', async () => {
+    const game = new GameModule();
+    await game.initialize(context);
+    await game.loadStats();
+
+    const [hubUrl, auth] = lastHubClientArgs();
+    expect(hubUrl).toBe('http://localhost:5015/hubs/typing');
+    expect(auth).toEqual({ devUser: { id: 'user-ana', displayName: 'Ana' } });
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe('http://localhost:5015/api/games/typing/players/user-ana/stats');
+    expect(init.headers).toEqual({ 'X-Dev-User': 'user-ana', 'X-Dev-Name': 'Ana' });
+  });
+
+  it('con getAccessToken del Shell usa el token de Auth0 en el hub y en la API', async () => {
+    const withToken = { ...context, getAccessToken: async () => 'token-de-ana' };
+    const game = new GameModule();
+    await game.initialize(withToken);
+    await game.loadHistory();
+
+    const [, auth] = lastHubClientArgs();
+    expect(auth.devUser).toBeUndefined();
+    await expect(auth.accessTokenFactory?.()).resolves.toBe('token-de-ana');
+
+    const [, init] = fetchMock.mock.calls[0];
+    expect(init.headers).toEqual({ Authorization: 'Bearer token-de-ana' });
+  });
+
+  it('codifica la identidad de desarrollo: los encabezados HTTP no admiten tildes', async () => {
+    const game = new GameModule();
+    await game.initialize({ ...context, currentUser: { id: 'user-jose', displayName: 'José Núñez' } });
+    await game.loadHistory();
+
+    const [, init] = fetchMock.mock.calls[0];
+    expect(init.headers['X-Dev-Name']).toBe('Jos%C3%A9%20N%C3%BA%C3%B1ez');
   });
 });

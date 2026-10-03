@@ -48,6 +48,13 @@ public sealed class TypingMatchService
         return true;
     }
 
+    /// <summary>Indica si el usuario entró a la partida (y no salió de ella).</summary>
+    public bool IsPlayer(string matchId, string userId) =>
+        !string.IsNullOrWhiteSpace(matchId)
+        && !string.IsNullOrWhiteSpace(userId)
+        && store.TryGet(matchId, out var state)
+        && state.TryGetPlayer(userId, out _);
+
     public bool TryLeave(string matchId, string userId)
     {
         if (!store.TryGet(matchId, out var state)) return false;

@@ -1,11 +1,12 @@
 # CI del Equipo 4 (Typing Battle).
 # Implementa 05-cicd-testing-commits.md de battlehub-contracts: en cada PR hacia main (y en cada
-# push a main) se ejecutan restore, build, pruebas unitarias y pruebas de integración del backend.
-# Las pruebas de integración corren contra un MySQL 8.4 real (ADR-005), levantado como servicio.
+# push a main) corren dos jobs, porque el repositorio tiene la API (.NET 10) y el microfrontend (Aurelia):
+# - Backend: restore, build, migraciones al día, pruebas unitarias y de integración contra un MySQL 8.4
+#   real (ADR-005), levantado como servicio.
+# - Frontend: install, lint, build y pruebas, con Node 24 desde frontend/.nvmrc (ADR-003).
 #
 # No agregar filtros "paths:" a los triggers: si un check obligatorio no se ejecuta,
 # el PR queda esperándolo indefinidamente.
-# Cuando exista el microfrontend (Aurelia) se agrega aquí su propio job (install, build, lint y pruebas).
 
 name: CI
 
@@ -64,3 +65,33 @@ jobs:
 
       - name: Integration tests
         run: dotnet test --no-build --filter "Category=Integration"
+
+  frontend:
+    name: Frontend (Aurelia)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node (frontend/.nvmrc)
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: frontend/.nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint (ESLint + Stylelint)
+        run: npm run lint
+
+      - name: Build (genera dist/remoteEntry.js)
+        run: npm run build
+
+      - name: Unit tests
+        run: npx jest --ci

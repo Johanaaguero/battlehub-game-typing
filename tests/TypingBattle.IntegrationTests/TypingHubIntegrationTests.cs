@@ -1,4 +1,3 @@
-using System.Net.Http.Json;
 using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,7 +14,7 @@ public class TypingHubIntegrationTests : IClassFixture<TypingApiFactory>
     public TypingHubIntegrationTests(TypingApiFactory factory)
     {
         _factory = factory;
-        _client = factory.CreateClient();
+        _client = factory.CreateAuthenticatedClient("espectador");
     }
 
     [Fact]
@@ -32,26 +31,25 @@ public class TypingHubIntegrationTests : IClassFixture<TypingApiFactory>
             store.GetOrCreate(matchId);
         }
 
-        var hubUrl = new Uri(_client.BaseAddress!, "/hubs/typing");
-
-        var connection = new HubConnectionBuilder()
-            .WithUrl(hubUrl, options => { options.HttpMessageHandlerFactory = _ => _factory.Server.CreateHandler(); })
-            .Build();
+        // Cada jugador usa su propia conexión autenticada: el hub no deja actuar en nombre de otro usuario.
+        await using var connectionA = _factory.CreateHubConnection(userA);
+        await using var connectionB = _factory.CreateHubConnection(userB);
 
         var joinedNotifications = new List<string>();
         var updates = new List<(string user, int? score)>();
         var ended = new List<MatchEndedNotification>();
 
-        connection.On<PlayerJoinedNotification>("playerJoined", n => joinedNotifications.Add(n.UserId));
-        connection.On<PlayerUpdateNotification>("playerUpdate", u => updates.Add((u.UserId, u.Score)));
-        connection.On<MatchEndedNotification>("matchEnded", m => ended.Add(m));
+        connectionA.On<PlayerJoinedNotification>("playerJoined", n => joinedNotifications.Add(n.UserId));
+        connectionA.On<PlayerUpdateNotification>("playerUpdate", u => updates.Add((u.UserId, u.Score)));
+        connectionA.On<MatchEndedNotification>("matchEnded", m => ended.Add(m));
 
-        await connection.StartAsync();
+        await connectionA.StartAsync();
+        await connectionB.StartAsync();
 
         // Join both players
-        var r1 = await connection.InvokeAsync<bool>("JoinMatch", new JoinMatchRequest(matchId, userA, "Player A"));
+        var r1 = await connectionA.InvokeAsync<bool>("JoinMatch", new JoinMatchRequest(matchId, userA, "Player A"));
         Assert.True(r1);
-        var r2 = await connection.InvokeAsync<bool>("JoinMatch", new JoinMatchRequest(matchId, userB, "Player B"));
+        var r2 = await connectionB.InvokeAsync<bool>("JoinMatch", new JoinMatchRequest(matchId, userB, "Player B"));
         Assert.True(r2);
 
         // Wait briefly to receive broadcasts
@@ -61,9 +59,9 @@ public class TypingHubIntegrationTests : IClassFixture<TypingApiFactory>
 
         // Send updates
         var updateA = new PlayerUpdateDto(matchId, userA, 100, 50.0, 95.0, DateTime.UtcNow);
-        await connection.InvokeAsync<bool>("SendPlayerUpdate", updateA);
+        await connectionA.InvokeAsync<bool>("SendPlayerUpdate", updateA);
         var updateB = new PlayerUpdateDto(matchId, userB, 200, 60.0, 98.0, DateTime.UtcNow);
-        await connection.InvokeAsync<bool>("SendPlayerUpdate", updateB);
+        await connectionB.InvokeAsync<bool>("SendPlayerUpdate", updateB);
 
         await Task.Delay(100);
         Assert.Contains(updates, u => u.user == userA && u.score == 100);
@@ -71,7 +69,7 @@ public class TypingHubIntegrationTests : IClassFixture<TypingApiFactory>
 
         // End match
         var endReq = new EndMatchRequest(matchId, userA, null, DateTime.UtcNow.AddMinutes(-1), DateTime.UtcNow, userB, null);
-        await connection.InvokeAsync("EndMatch", endReq);
+        await connectionA.InvokeAsync("EndMatch", endReq);
 
         // Wait for matchEnded notification
         await Task.Delay(200);
@@ -85,6 +83,7 @@ public class TypingHubIntegrationTests : IClassFixture<TypingApiFactory>
         Assert.Equal(matchId, (string?)json!["matchId"]);
         Assert.Equal("typing", (string?)json!["gameType"]);
 
-        await connection.StopAsync();
+        await connectionA.StopAsync();
+        await connectionB.StopAsync();
     }
 }

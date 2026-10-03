@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using System.Net;
 using System.Text.Json.Nodes;
-using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.SignalR.Client;
 using TypingBattle.Api.Hubs;
 
@@ -14,7 +13,7 @@ namespace TypingBattle.IntegrationTests;
 [Trait("Category", "Integration")]
 public class TypingHubFlowTests(TypingApiFactory factory) : IClassFixture<TypingApiFactory>
 {
-    private readonly HttpClient _client = factory.CreateClient();
+    private readonly HttpClient _client = factory.CreateAuthenticatedClient("espectador");
 
     [Fact]
     public async Task Partida_SinPrepararAntes_SeJuegaYSeGuardaUnaSolaVez()
@@ -22,8 +21,8 @@ public class TypingHubFlowTests(TypingApiFactory factory) : IClassFixture<Typing
         var matchId = $"match-{Guid.NewGuid():N}";
         var (ana, luis) = ($"ana-{Guid.NewGuid():N}", $"luis-{Guid.NewGuid():N}");
 
-        await using var anaConnection = await ConnectAsync();
-        await using var luisConnection = await ConnectAsync();
+        await using var anaConnection = await ConnectAsync(ana);
+        await using var luisConnection = await ConnectAsync(luis);
         var anaEvents = Listen(anaConnection);
         var luisEvents = Listen(luisConnection);
 
@@ -75,16 +74,9 @@ public class TypingHubFlowTests(TypingApiFactory factory) : IClassFixture<Typing
     private static EndMatchRequest EndRequest(string matchId, string userId) =>
         new(matchId, userId, null, null, null, null, null);
 
-    private async Task<HubConnection> ConnectAsync()
+    private async Task<HubConnection> ConnectAsync(string userId)
     {
-        var connection = new HubConnectionBuilder()
-            .WithUrl(new Uri(_client.BaseAddress!, "/hubs/typing"), options =>
-            {
-                options.Transports = HttpTransportType.LongPolling;
-                options.HttpMessageHandlerFactory = _ => factory.Server.CreateHandler();
-            })
-            .Build();
-
+        var connection = factory.CreateHubConnection(userId);
         await connection.StartAsync();
         return connection;
     }

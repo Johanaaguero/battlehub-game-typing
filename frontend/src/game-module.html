@@ -5,30 +5,30 @@
         <!-- HEADER -->
         <!-- ================================================= -->
 
-        <header class="game-header">
+        <header class="typing-game-header">
 
-            <div class="game-brand">
+            <div class="typing-game-brand">
 
-                <div class="brand-line">
-                    <span class="brand-mark"></span>
+                <div class="typing-game-brand-line">
+                    <span class="typing-game-brand-mark"></span>
 
-                    <span class="brand-system">
+                    <span class="typing-game-brand-system">
                         BATTLEHUB ARENA
                     </span>
                 </div>
 
                 <h1>
                     TYPING
-                    <span>BATTLE</span>
+                    <span class="typing-game-title-accent">BATTLE</span>
                 </h1>
 
-                <p class="game-subtitle">
+                <p class="typing-game-subtitle">
                     Competitive Typing Arena
                 </p>
 
                 <div
                     if.bind="context"
-                    class="match-info">
+                    class="typing-game-match-info">
 
                     <span>SESSION</span>
 
@@ -40,23 +40,23 @@
 
             </div>
 
-            <div class="header-hud">
+            <div class="typing-game-header-hud">
 
-                <div class="match-state">
+                <div class="typing-game-match-state">
 
                     <span
                         if.bind="!isTimeUp && !matchFinished"
-                        class="state-dot live-dot">
+                        class="typing-game-state-dot typing-game-live-dot">
                     </span>
 
                     <span
                         if.bind="isTimeUp && !matchFinished"
-                        class="state-dot waiting-dot">
+                        class="typing-game-state-dot typing-game-waiting-dot">
                     </span>
 
                     <span
                         if.bind="matchFinished"
-                        class="state-dot finished-dot">
+                        class="typing-game-state-dot typing-game-finished-dot">
                     </span>
 
                     <strong
@@ -76,17 +76,17 @@
 
                 </div>
 
-                <div class="timer-box">
+                <div class="typing-game-timer-box">
 
-                    <span class="timer-label">
+                    <span class="typing-game-timer-label">
                         TIME LEFT
                     </span>
 
-                    <strong class="timer-value">
+                    <strong class="typing-game-timer-value">
                         ${timeRemaining}
                     </strong>
 
-                    <span class="timer-unit">
+                    <span class="typing-game-timer-unit">
                         SEC
                     </span>
 
@@ -102,9 +102,9 @@
 
         <div
             if.bind="context"
-            class="current-user">
+            class="typing-game-current-user">
 
-            <div class="current-user-indicator"></div>
+            <div class="typing-game-current-user-indicator"></div>
 
             <span>
                 PLAYER
@@ -118,7 +118,7 @@
 
         <div
             if.bind="!context"
-            class="waiting-message">
+            class="typing-game-waiting-message">
 
             Esperando información de la partida...
 
@@ -130,18 +130,18 @@
             <!-- NAVIGATION -->
             <!-- ============================================= -->
 
-            <nav class="game-tabs">
+            <nav class="typing-game-tabs">
 
                 <button
                     type="button"
                     class.bind="
                         activeSection === 'game'
-                            ? 'game-tab active-tab'
-                            : 'game-tab'
+                            ? 'typing-game-tab typing-game-active-tab'
+                            : 'typing-game-tab'
                     "
                     click.trigger="showGame()">
 
-                    <span class="tab-number">
+                    <span class="typing-game-tab-number">
                         01
                     </span>
 
@@ -153,12 +153,12 @@
                     type="button"
                     class.bind="
                         activeSection === 'history'
-                            ? 'game-tab active-tab'
-                            : 'game-tab'
+                            ? 'typing-game-tab typing-game-active-tab'
+                            : 'typing-game-tab'
                     "
                     click.trigger="showHistory()">
 
-                    <span class="tab-number">
+                    <span class="typing-game-tab-number">
                         02
                     </span>
 
@@ -170,12 +170,12 @@
                     type="button"
                     class.bind="
                         activeSection === 'stats'
-                            ? 'game-tab active-tab'
-                            : 'game-tab'
+                            ? 'typing-game-tab typing-game-active-tab'
+                            : 'typing-game-tab'
                     "
                     click.trigger="showStats()">
 
-                    <span class="tab-number">
+                    <span class="typing-game-tab-number">
                         03
                     </span>
 
@@ -191,18 +191,18 @@
 
             <div
                 if.bind="activeSection === 'game'"
-                class="game-content">
+                class="typing-game-content">
 
-                <main class="typing-area">
+                <main class="typing-game-typing-area">
 
                     <!-- ===================================== -->
                     <!-- PROGRESS -->
                     <!-- ===================================== -->
 
-                    <div class="section-top">
+                    <div class="typing-game-section-top">
 
                         <div>
-                            <span class="section-code">
+                            <span class="typing-game-section-code">
                                 MATCH PROGRESS
                             </span>
 
@@ -211,16 +211,16 @@
                             </h2>
                         </div>
 
-                        <div class="progress-number">
+                        <div class="typing-game-progress-number">
                             ${progress}%
                         </div>
 
                     </div>
 
-                    <div class="progress-bar">
+                    <div class="typing-game-progress-bar">
 
                         <div
-                            class="progress-fill"
+                            class="typing-game-progress-fill"
                             style="width: ${progress}%">
                         </div>
 
@@ -230,11 +230,11 @@
                     <!-- METRICS -->
                     <!-- ===================================== -->
 
-                    <div class="typing-stats">
+                    <div class="typing-game-typing-stats">
 
-                        <div class="stat-box accuracy-stat">
+                        <div class="typing-game-stat-box typing-game-accuracy-stat">
 
-                            <div class="stat-decoration"></div>
+                            <div class="typing-game-stat-decoration"></div>
 
                             <span>
                                 PRECISIÓN
@@ -250,9 +250,9 @@
 
                         </div>
 
-                        <div class="stat-box correct-stat">
+                        <div class="typing-game-stat-box typing-game-correct-stat">
 
-                            <div class="stat-decoration"></div>
+                            <div class="typing-game-stat-decoration"></div>
 
                             <span>
                                 CORRECTOS
@@ -268,9 +268,9 @@
 
                         </div>
 
-                        <div class="stat-box error-stat">
+                        <div class="typing-game-stat-box typing-game-error-stat">
 
-                            <div class="stat-decoration"></div>
+                            <div class="typing-game-stat-decoration"></div>
 
                             <span>
                                 ERRORES
@@ -292,12 +292,12 @@
                     <!-- TARGET TEXT -->
                     <!-- ===================================== -->
 
-                    <div class="text-card">
+                    <div class="typing-game-text-card">
 
-                        <div class="card-heading">
+                        <div class="typing-game-card-heading">
 
                             <div>
-                                <span class="section-code">
+                                <span class="typing-game-section-code">
                                     TARGET
                                 </span>
 
@@ -306,7 +306,7 @@
                                 </h2>
                             </div>
 
-                            <span class="target-status">
+                            <span class="typing-game-target-status">
                                 READY
                             </span>
 
@@ -322,9 +322,9 @@
                     <!-- TYPING INPUT -->
                     <!-- ===================================== -->
 
-                    <div class="input-card">
+                    <div class="typing-game-input-card">
 
-                        <div class="input-heading">
+                        <div class="typing-game-input-heading">
 
                             <label for="typingInput">
                                 TYPE ZONE
@@ -336,14 +336,14 @@
 
                         </div>
 
-                        <div class="typing-console">
+                        <div class="typing-game-typing-console">
 
-                            <div class="console-top">
+                            <div class="typing-game-console-top">
 
-                                <div class="console-dots">
-                                    <span></span>
-                                    <span></span>
-                                    <span></span>
+                                <div class="typing-game-console-dots">
+                                    <span class="typing-game-console-dot-red"></span>
+                                    <span class="typing-game-console-dot-yellow"></span>
+                                    <span class="typing-game-console-dot-green"></span>
                                 </div>
 
                                 <span>
@@ -374,13 +374,13 @@
                             !isTimeUp &&
                             !matchFinished
                         "
-                        class="waiting-result-section">
+                        class="typing-game-waiting-result-section">
 
-                        <div class="waiting-result-header">
+                        <div class="typing-game-waiting-result-header">
 
                             <div>
 
-                                <span class="results-label">
+                                <span class="typing-game-results-label">
                                     TEXT COMPLETED
                                 </span>
 
@@ -390,13 +390,13 @@
 
                             </div>
 
-                            <span class="waiting-status">
+                            <span class="typing-game-waiting-status">
                                 WAITING
                             </span>
 
                         </div>
 
-                        <p class="waiting-result-message">
+                        <p class="typing-game-waiting-result-message">
                             Tus métricas quedaron registradas.
                             La partida termina cuando se acabe el tiempo.
                         </p>
@@ -412,13 +412,13 @@
                             isTimeUp &&
                             !matchFinished
                         "
-                        class="waiting-result-section">
+                        class="typing-game-waiting-result-section">
 
-                        <div class="waiting-result-header">
+                        <div class="typing-game-waiting-result-header">
 
                             <div>
 
-                                <span class="results-label">
+                                <span class="typing-game-results-label">
                                     TIME OVER
                                 </span>
 
@@ -428,30 +428,30 @@
 
                             </div>
 
-                            <span class="waiting-status">
+                            <span class="typing-game-waiting-status">
                                 SYNCING RESULT
                             </span>
 
                         </div>
 
-                        <p class="waiting-result-message">
+                        <p class="typing-game-waiting-result-message">
                             Tus métricas finales están listas.
                             Esperando el resultado oficial de la partida...
                         </p>
 
-                        <div class="final-stats">
+                        <div class="typing-game-final-stats">
 
-                            <div class="final-stat">
+                            <div class="typing-game-final-stat">
                                 <span>WPM</span>
                                 <strong>${wpm}</strong>
                             </div>
 
-                            <div class="final-stat">
+                            <div class="typing-game-final-stat">
                                 <span>PRECISIÓN</span>
                                 <strong>${accuracy}%</strong>
                             </div>
 
-                            <div class="final-stat">
+                            <div class="typing-game-final-stat">
                                 <span>PROGRESO</span>
                                 <strong>${progress}%</strong>
                             </div>
@@ -466,13 +466,13 @@
 
                     <section
                         if.bind="matchFinished"
-                        class="results-section">
+                        class="typing-game-results-section">
 
-                        <div class="results-header">
+                        <div class="typing-game-results-header">
 
                             <div>
 
-                                <span class="results-label">
+                                <span class="typing-game-results-label">
                                     MATCH COMPLETE
                                 </span>
 
@@ -484,7 +484,7 @@
 
                             <span
                                 if.bind="matchOutcome"
-                                class="result-status">
+                                class="typing-game-result-status">
 
                                 ${matchOutcome}
 
@@ -494,7 +494,7 @@
 
                         <p
                             if.bind="resultMessage"
-                            class="result-message">
+                            class="typing-game-result-message">
 
                             ${resultMessage}
 
@@ -502,46 +502,46 @@
 
                         <div
                             if.bind="finalResult"
-                            class="final-results-content">
+                            class="typing-game-final-results-content">
 
                             <div
                                 if.bind="winnerName"
-                                class="winner-card">
+                                class="typing-game-winner-card">
 
-                                <span class="winner-label">
+                                <span class="typing-game-winner-label">
                                     CHAMPION
                                 </span>
 
-                                <strong class="winner-name">
+                                <strong class="typing-game-winner-name">
                                     ${winnerName}
                                 </strong>
 
                             </div>
 
-                            <div class="final-stats">
+                            <div class="typing-game-final-stats">
 
-                                <div class="final-stat">
+                                <div class="typing-game-final-stat">
                                     <span>WPM</span>
                                     <strong>${wpm}</strong>
                                 </div>
 
-                                <div class="final-stat">
+                                <div class="typing-game-final-stat">
                                     <span>PRECISIÓN</span>
                                     <strong>${accuracy}%</strong>
                                 </div>
 
-                                <div class="final-stat">
+                                <div class="typing-game-final-stat">
                                     <span>PROGRESO</span>
                                     <strong>${progress}%</strong>
                                 </div>
 
                             </div>
 
-                            <div class="ranking-section">
+                            <div class="typing-game-ranking-section">
 
-                                <div class="ranking-title">
+                                <div class="typing-game-ranking-title">
 
-                                    <span class="section-code">
+                                    <span class="typing-game-section-code">
                                         LEADERBOARD
                                     </span>
 
@@ -551,7 +551,7 @@
 
                                 </div>
 
-                                <div class="ranking-list">
+                                <div class="typing-game-ranking-list">
 
                                     <div
                                         repeat.for="
@@ -562,15 +562,15 @@
                                             isWinner(
                                                 resultPlayer.userId
                                             )
-                                                ? 'ranking-player ranking-winner'
-                                                : 'ranking-player'
+                                                ? 'typing-game-ranking-player typing-game-ranking-winner'
+                                                : 'typing-game-ranking-player'
                                         ">
 
-                                        <div class="ranking-position">
+                                        <div class="typing-game-ranking-position">
                                             ${$index + 1}
                                         </div>
 
-                                        <div class="ranking-player-info">
+                                        <div class="typing-game-ranking-player-info">
 
                                             <strong>
                                                 ${resultPlayer.displayName}
@@ -581,7 +581,7 @@
                                                     resultPlayer.userId ===
                                                     context.currentUser.id
                                                 "
-                                                class="you-badge">
+                                                class="typing-game-you-badge">
 
                                                 YOU
 
@@ -593,7 +593,7 @@
                                                         resultPlayer.userId
                                                     )
                                                 "
-                                                class="winner-badge">
+                                                class="typing-game-winner-badge">
 
                                                 WINNER
 
@@ -601,7 +601,7 @@
 
                                         </div>
 
-                                        <div class="ranking-score">
+                                        <div class="typing-game-ranking-score">
 
                                             <span>
                                                 SCORE
@@ -629,13 +629,13 @@
                 <!-- PLAYERS -->
                 <!-- ========================================= -->
 
-                <aside class="players-panel">
+                <aside class="typing-game-players-panel">
 
-                    <div class="players-header">
+                    <div class="typing-game-players-header">
 
                         <div>
 
-                            <span class="section-code">
+                            <span class="typing-game-section-code">
                                 LOBBY
                             </span>
 
@@ -645,16 +645,16 @@
 
                         </div>
 
-                        <span class="players-count">
+                        <span class="typing-game-players-count">
                             ${players.length}
                         </span>
 
                     </div>
 
                     <div
-                        class="lobby-status">
+                        class="typing-game-lobby-status">
 
-                        <span class="lobby-pulse"></span>
+                        <span class="typing-game-lobby-pulse"></span>
 
                         REAL-TIME SYNC
 
@@ -665,17 +665,17 @@
                         class.bind="
                             player.userId ===
                             context.currentUser.id
-                                ? 'player-card current-player-card'
-                                : 'player-card'
+                                ? 'typing-game-player-card typing-game-current-player-card'
+                                : 'typing-game-player-card'
                         ">
 
-                        <div class="player-avatar">
+                        <div class="typing-game-player-avatar">
                             ${player.displayName[0]}
                         </div>
 
-                        <div class="player-info">
+                        <div class="typing-game-player-info">
 
-                            <div class="player-name">
+                            <div class="typing-game-player-name">
 
                                 <strong>
                                     ${player.displayName}
@@ -686,7 +686,7 @@
                                         player.userId ===
                                         context.currentUser.id
                                     "
-                                    class="you-badge">
+                                    class="typing-game-you-badge">
 
                                     YOU
 
@@ -694,7 +694,7 @@
 
                             </div>
 
-                            <div class="player-mini-stats">
+                            <div class="typing-game-player-mini-stats">
 
                                 <span>
                                     ${player.wpm ?? 0}
@@ -714,7 +714,7 @@
                             if.bind="
                                 player.score !== null
                             "
-                            class="player-score">
+                            class="typing-game-player-score">
 
                             <span>
                                 SCORE
@@ -732,7 +732,7 @@
                         if.bind="
                             players.length === 0
                         "
-                        class="no-players">
+                        class="typing-game-no-players">
 
                         Esperando jugadores...
 
@@ -750,13 +750,13 @@
                 if.bind="
                     activeSection === 'history'
                 "
-                class="data-section">
+                class="typing-game-data-section">
 
-                <div class="data-section-header">
+                <div class="typing-game-data-section-header">
 
                     <div>
 
-                        <span class="section-code">
+                        <span class="typing-game-section-code">
                             PLAYER RECORD
                         </span>
 
@@ -773,7 +773,7 @@
 
                     <button
                         type="button"
-                        class="refresh-button"
+                        class="typing-game-refresh-button"
                         disabled.bind="historyLoading"
                         click.trigger="refreshHistory()">
 
@@ -785,7 +785,7 @@
 
                 <div
                     if.bind="historyLoading"
-                    class="loading-state">
+                    class="typing-game-loading-state">
 
                     Sincronizando historial...
 
@@ -796,7 +796,7 @@
                         historyError &&
                         !historyLoading
                     "
-                    class="error-state">
+                    class="typing-game-error-state">
 
                     ${historyError}
 
@@ -808,9 +808,9 @@
                         !historyLoading &&
                         history.length === 0
                     "
-                    class="empty-state">
+                    class="typing-game-empty-state">
 
-                    <span class="empty-code">
+                    <span class="typing-game-empty-code">
                         NO DATA
                     </span>
 
@@ -823,21 +823,21 @@
                         history.length > 0 &&
                         !historyLoading
                     "
-                    class="history-list">
+                    class="typing-game-history-list">
 
                     <article
                         repeat.for="item of history"
                         class.bind="
                             item.won
-                                ? 'history-card history-win'
-                                : 'history-card'
+                                ? 'typing-game-history-card typing-game-history-win'
+                                : 'typing-game-history-card'
                         ">
 
-                        <div class="history-main">
+                        <div class="typing-game-history-main">
 
                             <div>
 
-                                <div class="history-title">
+                                <div class="typing-game-history-title">
 
                                     <strong>
                                         ${item.matchId}
@@ -845,7 +845,7 @@
 
                                     <span
                                         if.bind="item.won"
-                                        class="win-badge">
+                                        class="typing-game-win-badge">
 
                                         VICTORY
 
@@ -853,7 +853,7 @@
 
                                 </div>
 
-                                <span class="history-date">
+                                <span class="typing-game-history-date">
                                     ${formatDate(
                                         item.finishedAt
                                     )}
@@ -861,7 +861,7 @@
 
                             </div>
 
-                            <div class="history-position">
+                            <div class="typing-game-history-position">
 
                                 <span>
                                     RANK
@@ -877,7 +877,7 @@
 
                         </div>
 
-                        <div class="history-metrics">
+                        <div class="typing-game-history-metrics">
 
                             <div>
                                 <span>SCORE</span>
@@ -918,13 +918,13 @@
                 if.bind="
                     activeSection === 'stats'
                 "
-                class="data-section">
+                class="typing-game-data-section">
 
-                <div class="data-section-header">
+                <div class="typing-game-data-section-header">
 
                     <div>
 
-                        <span class="section-code">
+                        <span class="typing-game-section-code">
                             PERFORMANCE CORE
                         </span>
 
@@ -941,7 +941,7 @@
 
                     <button
                         type="button"
-                        class="refresh-button"
+                        class="typing-game-refresh-button"
                         disabled.bind="statsLoading"
                         click.trigger="refreshStats()">
 
@@ -953,7 +953,7 @@
 
                 <div
                     if.bind="statsLoading"
-                    class="loading-state">
+                    class="typing-game-loading-state">
 
                     Calculando estadísticas...
 
@@ -964,7 +964,7 @@
                         statsError &&
                         !statsLoading
                     "
-                    class="error-state">
+                    class="typing-game-error-state">
 
                     ${statsError}
 
@@ -975,46 +975,46 @@
                         stats &&
                         !statsLoading
                     "
-                    class="stats-dashboard">
+                    class="typing-game-stats-dashboard">
 
-                    <div class="stats-grid">
+                    <div class="typing-game-stats-grid">
 
-                        <div class="stats-card">
+                        <div class="typing-game-stats-card">
                             <span>PARTIDAS</span>
                             <strong>
                                 ${stats.gamesPlayed}
                             </strong>
                         </div>
 
-                        <div class="stats-card">
+                        <div class="typing-game-stats-card">
                             <span>VICTORIAS</span>
                             <strong>
                                 ${stats.wins}
                             </strong>
                         </div>
 
-                        <div class="stats-card">
+                        <div class="typing-game-stats-card">
                             <span>WIN RATE</span>
                             <strong>
                                 ${winRatePercentage}%
                             </strong>
                         </div>
 
-                        <div class="stats-card">
+                        <div class="typing-game-stats-card">
                             <span>AVG SCORE</span>
                             <strong>
                                 ${stats.averageScore}
                             </strong>
                         </div>
 
-                        <div class="stats-card">
+                        <div class="typing-game-stats-card">
                             <span>BEST SCORE</span>
                             <strong>
                                 ${stats.bestScore}
                             </strong>
                         </div>
 
-                        <div class="stats-card">
+                        <div class="typing-game-stats-card">
                             <span>AVG WPM</span>
                             <strong>
                                 ${formatMetric(
@@ -1023,7 +1023,7 @@
                             </strong>
                         </div>
 
-                        <div class="stats-card">
+                        <div class="typing-game-stats-card">
                             <span>BEST WPM</span>
                             <strong>
                                 ${formatMetric(
@@ -1032,7 +1032,7 @@
                             </strong>
                         </div>
 
-                        <div class="stats-card">
+                        <div class="typing-game-stats-card">
                             <span>AVG ACCURACY</span>
                             <strong>
                                 ${formatMetric(
@@ -1043,7 +1043,7 @@
 
                     </div>
 
-                    <div class="last-played-card">
+                    <div class="typing-game-last-played-card">
 
                         <div>
                             <span>

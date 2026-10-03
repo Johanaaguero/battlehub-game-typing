@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 const path = require('path');
+const webpack = require('webpack');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const { ModuleFederationPlugin } = require('webpack').container;
 const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
@@ -120,6 +121,12 @@ module.exports = function (env, { analyze }) {
                     './GameModule': './src/game-module'
                 },
                 shared: sharedDeps
+            }),
+
+            // URL de la API y del hub (src/config.ts). Sin la variable se usa http://localhost:5015.
+            // Ejemplo: TYPING_API_URL=https://typing.mi-dominio.com npm run build
+            new webpack.DefinePlugin({
+                __TYPING_API_URL__: JSON.stringify(process.env.TYPING_API_URL || '')
             }),
 
             new HtmlWebpackPlugin({
