@@ -14,6 +14,16 @@ export interface GameModule {
     dispose(): Promise<void>;
 }
 
+/**
+ * Extensiones opcionales que el Shell puede agregar al contexto (no forman
+ * parte del contrato 03 §5). getAccessToken devuelve el access token de
+ * Auth0 del usuario para la API y el hub del juego. Sin ella, el juego usa
+ * la identidad de desarrollo, que la API solo acepta con Auth:Mode=Development.
+ */
+export interface GameContextExtensions {
+    getAccessToken?: () => Promise<string | null | undefined>;
+}
+
 /* =========================
    SignalR - Requests
    ========================= */

@@ -60,16 +60,114 @@ public class TypingMatchServiceTests
         Assert.Equal("Ana", player.DisplayName);
     }
 
+    private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
+    {
+        public DateTimeOffset Now { get; set; } = now;
+
+        public override DateTimeOffset GetUtcNow() => Now;
+    }
+
     [Fact]
-    public void JoinMatch_Fails_WhenMatchNotExist()
+    public void JoinMatch_CreatesMatch_WhenItDoesNotExistYet()
+    {
+        // Matchmaking crea la sala; el servicio de Typing la conoce recién con el primer jugador que entra.
+        var store = new TypingMatchStore();
+        var svc = new TypingMatchService(store, new FakeResultsService(), UtcTimeProvider());
+
+        var ok = svc.TryJoin("m-new", "u1", "Ana");
+
+        Assert.True(ok);
+        Assert.True(store.TryGet("m-new", out var state));
+        Assert.True(state.TryGetPlayer("u1", out var player));
+        Assert.Equal("Ana", player.DisplayName);
+    }
+
+    [Fact]
+    public void JoinMatch_RecordsStartedAt_OnFirstJoinOnly()
+    {
+        var start = new DateTimeOffset(2026, 10, 3, 20, 0, 0, TimeSpan.Zero);
+        var clock = new FixedTimeProvider(start);
+        var store = new TypingMatchStore();
+        var svc = new TypingMatchService(store, new FakeResultsService(), clock);
+
+        svc.TryJoin("m-start", "u1", "Ana");
+        clock.Now = start.AddSeconds(5);
+        svc.TryJoin("m-start", "u2", "Luis");
+
+        Assert.True(store.TryGet("m-start", out var state));
+        Assert.Equal(start.UtcDateTime, state.StartedAt);
+    }
+
+    [Fact]
+    public void JoinMatch_Fails_WhenMatchAlreadyEnded()
+    {
+        var store = CreateStoreWithMatch("m-ended");
+        store.GetOrCreate("m-ended").MarkFinished(DateTime.UtcNow);
+        var svc = new TypingMatchService(store, new FakeResultsService(), UtcTimeProvider());
+
+        var ok = svc.TryJoin("m-ended", "u1", "Ana");
+
+        Assert.False(ok);
+    }
+
+    [Theory]
+    [InlineData("", "u1")]
+    [InlineData("m-1", " ")]
+    public void JoinMatch_Fails_WhenIdsAreMissing(string matchId, string userId)
     {
         var store = new TypingMatchStore();
+        var svc = new TypingMatchService(store, new FakeResultsService(), UtcTimeProvider());
+
+        Assert.False(svc.TryJoin(matchId, userId, "Ana"));
+        Assert.Empty(store.ListAll());
+    }
+
+    [Fact]
+    public void UpdateMetrics_CalculatesScore_WhenClientDoesNotSendIt()
+    {
+        var store = CreateStoreWithMatch("m-score");
+        var svc = new TypingMatchService(store, new FakeResultsService(), UtcTimeProvider());
+
+        Assert.True(svc.TryUpdatePlayerMetrics("m-score", "u1", null, 60.0, 100.0, out var first));
+        // Solo cambia la precisión: el puntaje se recalcula con la velocidad ya guardada.
+        Assert.True(svc.TryUpdatePlayerMetrics("m-score", "u1", null, null, 50.0, out var second));
+
+        Assert.Equal(600, first);
+        Assert.Equal(300, second);
+        Assert.True(store.TryGet("m-score", out var state));
+        Assert.True(state.TryGetPlayer("u1", out var player));
+        Assert.Equal(300, player.Score);
+    }
+
+    [Fact]
+    public async Task EndMatch_UsesJoinTime_AsStartedAt()
+    {
+        var start = new DateTimeOffset(2026, 10, 3, 20, 0, 0, TimeSpan.Zero);
+        var clock = new FixedTimeProvider(start);
+        var store = new TypingMatchStore();
+        var fake = new FakeResultsService();
+        var svc = new TypingMatchService(store, fake, clock);
+
+        svc.TryJoin("m-times", "u1", "Ana");
+        clock.Now = start.AddSeconds(60);
+        await svc.EndMatchAsync(new EndMatchRequest("m-times", "u1", null, null, null, null, null));
+
+        Assert.Equal(start.UtcDateTime, fake.LastRequest!.StartedAt);
+        Assert.Equal(start.AddSeconds(60).UtcDateTime, fake.LastRequest.FinishedAt);
+    }
+
+    [Fact]
+    public async Task EndMatch_UsesUserId_WhenPlayerHasNoDisplayName()
+    {
+        var store = CreateStoreWithMatch("m-noname");
+        store.GetOrCreate("m-noname").GetOrCreatePlayer("u1").UpdateMetrics(10, null, null);
         var fake = new FakeResultsService();
         var svc = new TypingMatchService(store, fake, UtcTimeProvider());
 
-        var ok = svc.TryJoin("m-unknown", "u1", "Ana");
+        await svc.EndMatchAsync(new EndMatchRequest("m-noname", "u1", null, null, null, null, null));
 
-        Assert.False(ok);
+        var player = Assert.Single(fake.LastRequest!.Players!);
+        Assert.Equal("u1", player!.DisplayName);
     }
 
     [Fact]

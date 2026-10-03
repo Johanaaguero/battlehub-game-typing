@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 
 namespace TypingBattle.Api.Hubs;
 
@@ -13,9 +14,9 @@ public sealed class TypingMatchStore
 
     public MatchState GetOrCreate(string matchId) => _matches.GetOrAdd(matchId, id => new MatchState(id));
 
-    public bool TryGet(string matchId, out MatchState? state) => _matches.TryGetValue(matchId, out state);
+    public bool TryGet(string matchId, [NotNullWhen(true)] out MatchState? state) => _matches.TryGetValue(matchId, out state);
 
-    public bool TryRemove(string matchId, out MatchState? state) => _matches.TryRemove(matchId, out state);
+    public bool TryRemove(string matchId, [NotNullWhen(true)] out MatchState? state) => _matches.TryRemove(matchId, out state);
 
     public IReadOnlyCollection<MatchState> ListAll() => _matches.Values.ToList();
 }
@@ -48,7 +49,7 @@ public sealed class MatchState
         return _players.GetOrAdd(userId, id => new PlayerState(id, displayName));
     }
 
-    public bool TryGetPlayer(string userId, out PlayerState? player) => _players.TryGetValue(userId, out player);
+    public bool TryGetPlayer(string userId, [NotNullWhen(true)] out PlayerState? player) => _players.TryGetValue(userId, out player);
 
     public void RemovePlayer(string userId) => _players.TryRemove(userId, out _);
 

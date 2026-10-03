@@ -28,16 +28,32 @@ public sealed class TypingMatchService
     }
 
     /// <summary>
-    /// Intenta unir al jugador a la partida. Devuelve false si la partida no existe.
+    /// Une al jugador a la partida. El primer jugador que entra crea el estado en memoria y fija el inicio:
+    /// la sala la crea Matchmaking (dueño de su ciclo de vida) y el Shell solo carga el juego tras MatchStarted,
+    /// así que este servicio nunca la conoce antes. Devuelve false si faltan los ids o si la partida ya terminó.
     /// </summary>
     public bool TryJoin(string matchId, string userId, string? displayName)
     {
-        if (!store.TryGet(matchId, out var state)) return false;
+        if (string.IsNullOrWhiteSpace(matchId) || string.IsNullOrWhiteSpace(userId)) return false;
+
+        var state = store.GetOrCreate(matchId);
+        lock (state.SyncRoot)
+        {
+            if (state.Ended) return false;
+            if (state.StartedAt is null) state.MarkStarted(timeProvider.GetUtcNow().UtcDateTime);
+        }
 
         var player = state.GetOrCreatePlayer(userId, displayName);
         player.UpdateDisplayName(displayName);
         return true;
     }
+
+    /// <summary>Indica si el usuario entró a la partida (y no salió de ella).</summary>
+    public bool IsPlayer(string matchId, string userId) =>
+        !string.IsNullOrWhiteSpace(matchId)
+        && !string.IsNullOrWhiteSpace(userId)
+        && store.TryGet(matchId, out var state)
+        && state.TryGetPlayer(userId, out _);
 
     public bool TryLeave(string matchId, string userId)
     {
@@ -46,11 +62,27 @@ public sealed class TypingMatchService
         return true;
     }
 
-    public bool TryUpdatePlayerMetrics(string matchId, string userId, int? score, double? wpm, double? accuracy)
+    public bool TryUpdatePlayerMetrics(string matchId, string userId, int? score, double? wpm, double? accuracy) =>
+        TryUpdatePlayerMetrics(matchId, userId, score, wpm, accuracy, out _);
+
+    /// <summary>
+    /// Actualiza las métricas del jugador. Si el cliente no envía el puntaje, lo calcula el servidor con
+    /// <see cref="TypingScore"/> a partir de la velocidad y la precisión vigentes.
+    /// <paramref name="currentScore"/> devuelve el puntaje resultante, para retransmitirlo al grupo.
+    /// </summary>
+    public bool TryUpdatePlayerMetrics(
+        string matchId, string userId, int? score, double? wpm, double? accuracy, out int currentScore)
     {
+        currentScore = 0;
         if (!store.TryGet(matchId, out var state)) return false;
+
         var player = state.GetOrCreatePlayer(userId);
-        player.UpdateMetrics(score, wpm, accuracy);
+        var newWpm = wpm ?? player.Wpm;
+        var newAccuracy = accuracy ?? player.Accuracy;
+        var newScore = score ?? (newWpm is { } w && newAccuracy is { } a ? TypingScore.Calculate(w, a) : null);
+
+        player.UpdateMetrics(newScore, wpm, accuracy);
+        currentScore = player.Score;
         return true;
     }
 
@@ -86,7 +118,8 @@ public sealed class TypingMatchService
         var players = state.Players
             .OrderByDescending(p => p.Score)
             .ThenBy(p => p.LastUpdated)
-            .Select(p => new PlayerResultRequest(p.UserId, p.DisplayName, p.Score))
+            // Sin nombre visible se usa el id: un jugador sin nombre haría inválido el resultado de toda la partida.
+            .Select(p => new PlayerResultRequest(p.UserId, string.IsNullOrWhiteSpace(p.DisplayName) ? p.UserId : p.DisplayName, p.Score))
             .Cast<PlayerResultRequest?>()
             .ToList();
 

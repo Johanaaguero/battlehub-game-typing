@@ -15,7 +15,8 @@ public class ResultsApiTests(TypingApiFactory factory) : IClassFixture<TypingApi
 {
     private const string Base = "/api/games/typing";
 
-    private readonly HttpClient _client = factory.CreateClient();
+    // Un servicio con permiso de escritura: POST /results no es para el navegador de un jugador.
+    private readonly HttpClient _client = factory.CreateAuthenticatedClient("tester", TestAuth.ResultsWritePermission);
 
     [Fact]
     public async Task PostResult_LuegoGet_DevuelveElMismoResultado()

@@ -1,59 +1,51 @@
 @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 
-:root {
+/* ========================================================= */
+
+/* PAGE */
+
+/* ========================================================= */
+
+.typing-game {
+    /* Variables del juego: definidas en su raíz para no afectar al Shell (ADR-003 §8). */
     --arena-bg: #050817;
     --arena-bg-secondary: #090e22;
-    --arena-panel: rgba(12, 19, 44, 0.9);
-    --arena-panel-soft: rgba(18, 27, 59, 0.78);
-
+    --arena-panel: rgb(12 19 44 / 90%);
+    --arena-panel-soft: rgb(18 27 59 / 78%);
     --arena-blue: #5578ff;
     --arena-cyan: #42e8ff;
     --arena-purple: #8758ff;
     --arena-green: #39e6a5;
     --arena-yellow: #ffd34e;
     --arena-red: #ff667d;
-
     --arena-white: #f4f7ff;
     --arena-text: #d5def5;
     --arena-muted: #7f90b6;
+    --arena-border: rgb(105 137 236 / 18%);
+    --arena-border-light: rgb(128 164 255 / 28%);
 
-    --arena-border: rgba(105, 137, 236, 0.18);
-    --arena-border-light: rgba(128, 164, 255, 0.28);
-}
-
-/* ========================================================= */
-/* PAGE */
-/* ========================================================= */
-
-.typing-game {
     position: relative;
     width: 100%;
     min-height: 100vh;
-
     padding: 2rem;
-
     box-sizing: border-box;
-
     overflow: hidden;
-
     font-family: 'Space Grotesk', Arial, sans-serif;
-
     color: var(--arena-text);
-
     background:
         radial-gradient(
             circle at 10% 0%,
-            rgba(67, 97, 238, 0.18),
+            rgb(67 97 238 / 18%),
             transparent 26%
         ),
         radial-gradient(
             circle at 90% 5%,
-            rgba(124, 58, 237, 0.19),
+            rgb(124 58 237 / 19%),
             transparent 25%
         ),
         radial-gradient(
             circle at 50% 100%,
-            rgba(34, 211, 238, 0.08),
+            rgb(34 211 238 / 8%),
             transparent 30%
         ),
         linear-gradient(
@@ -66,302 +58,239 @@
 
 .typing-game::before {
     content: '';
-
     position: absolute;
     inset: 0;
-
     opacity: 0.13;
-
     pointer-events: none;
-
     background-image:
         linear-gradient(
-            rgba(255, 255, 255, 0.025) 1px,
+            rgb(255 255 255 / 2.5%) 1px,
             transparent 1px
         ),
         linear-gradient(
             90deg,
-            rgba(255, 255, 255, 0.025) 1px,
+            rgb(255 255 255 / 2.5%) 1px,
             transparent 1px
         );
-
     background-size: 50px 50px;
 }
 
 .typing-game::after {
     content: '';
-
     position: absolute;
-
     width: 700px;
     height: 700px;
-
     right: -350px;
     top: 100px;
-
     border-radius: 50%;
-
     pointer-events: none;
-
     background:
         radial-gradient(
             circle,
-            rgba(71, 91, 255, 0.16),
+            rgb(71 91 255 / 16%),
             transparent 66%
         );
-
     filter: blur(30px);
 }
 
-.game-header,
-.current-user,
-.game-tabs,
-.game-content,
-.data-section,
-.waiting-message {
+.typing-game-header,
+.typing-game-current-user,
+.typing-game-tabs,
+.typing-game-content,
+.typing-game-data-section,
+.typing-game-waiting-message {
     position: relative;
     z-index: 2;
 }
 
 /* ========================================================= */
+
 /* HEADER */
+
 /* ========================================================= */
 
-.game-header {
+.typing-game-header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-
     gap: 2rem;
-
     margin-bottom: 1.2rem;
 }
 
-.game-brand {
+.typing-game-brand {
     min-width: 0;
 }
 
-.brand-line {
+.typing-game-brand-line {
     display: flex;
     align-items: center;
-
     gap: 0.55rem;
-
     margin-bottom: 0.35rem;
 }
 
-.brand-mark {
+.typing-game-brand-mark {
     width: 26px;
     height: 3px;
-
     border-radius: 999px;
-
     background:
         linear-gradient(
             90deg,
             var(--arena-cyan),
             var(--arena-purple)
         );
-
     box-shadow:
-        0 0 18px rgba(66, 232, 255, 0.5);
+        0 0 18px rgb(66 232 255 / 50%);
 }
 
-.brand-system {
-    font-family: 'Rajdhani', sans-serif;
-
+.typing-game-brand-system {
+    font-family: Rajdhani, sans-serif;
     color: var(--arena-cyan);
-
     font-size: 0.75rem;
     font-weight: 700;
-
     letter-spacing: 0.16em;
 }
 
-.game-header h1 {
+.typing-game-header h1 {
     margin: 0;
-
-    font-family: 'Rajdhani', sans-serif;
-
+    font-family: Rajdhani, sans-serif;
     font-size: 3.3rem;
     font-weight: 700;
-
     line-height: 0.95;
-
     letter-spacing: 0.05em;
-
-    color: #ffffff;
+    color: #fff;
 }
 
-.game-header h1 span {
+.typing-game-title-accent {
     background:
         linear-gradient(
             90deg,
             #69d6ff,
             #8c73ff
         );
-
-    -webkit-background-clip: text;
     background-clip: text;
-
     color: transparent;
 }
 
-.game-subtitle {
+.typing-game-subtitle {
     margin: 0.5rem 0 0;
-
     color: #8e9ec2;
-
     font-size: 0.95rem;
-
     letter-spacing: 0.04em;
 }
 
-.match-info {
+.typing-game-match-info {
     display: flex;
     align-items: center;
-
     gap: 0.55rem;
-
     margin-top: 0.9rem;
 }
 
-.match-info span {
+.typing-game-match-info span {
     padding: 0.18rem 0.45rem;
-
     border-radius: 6px;
-
-    font-family: 'Rajdhani', sans-serif;
-
+    font-family: Rajdhani, sans-serif;
     font-size: 0.68rem;
     font-weight: 700;
-
     letter-spacing: 0.08em;
-
     color: var(--arena-cyan);
-
-    background: rgba(66, 232, 255, 0.08);
-
+    background: rgb(66 232 255 / 8%);
     border:
-        1px solid rgba(66, 232, 255, 0.13);
+        1px solid rgb(66 232 255 / 13%);
 }
 
-.match-info strong {
-    font-family: 'Rajdhani', sans-serif;
-
+.typing-game-match-info strong {
+    font-family: Rajdhani, sans-serif;
     color: #bbcbef;
-
     font-size: 0.87rem;
-
     letter-spacing: 0.06em;
 }
 
 /* ========================================================= */
+
 /* HEADER HUD */
+
 /* ========================================================= */
 
-.header-hud {
+.typing-game-header-hud {
     display: flex;
     align-items: center;
-
     gap: 0.9rem;
 }
 
-.match-state {
+.typing-game-match-state {
     display: flex;
     align-items: center;
-
     gap: 0.45rem;
-
     padding: 0.55rem 0.8rem;
-
     border-radius: 10px;
-
-    background: rgba(8, 13, 31, 0.68);
-
+    background: rgb(8 13 31 / 68%);
     border: 1px solid var(--arena-border);
 }
 
-.match-state strong {
-    font-family: 'Rajdhani', sans-serif;
-
+.typing-game-match-state strong {
+    font-family: Rajdhani, sans-serif;
     font-size: 0.74rem;
-
     letter-spacing: 0.1em;
-
     color: #bdc9e6;
 }
 
-.state-dot {
+.typing-game-state-dot {
     width: 8px;
     height: 8px;
-
     border-radius: 50%;
 }
 
-.live-dot {
+.typing-game-live-dot {
     background: var(--arena-green);
-
     box-shadow:
-        0 0 14px rgba(57, 230, 165, 0.9);
+        0 0 14px rgb(57 230 165 / 90%);
 }
 
-.waiting-dot {
+.typing-game-waiting-dot {
     background: var(--arena-yellow);
-
     box-shadow:
-        0 0 14px rgba(255, 211, 78, 0.75);
+        0 0 14px rgb(255 211 78 / 75%);
 }
 
-.finished-dot {
+.typing-game-finished-dot {
     background: var(--arena-purple);
-
     box-shadow:
-        0 0 14px rgba(135, 88, 255, 0.75);
+        0 0 14px rgb(135 88 255 / 75%);
 }
 
 /* ========================================================= */
+
 /* TIMER */
+
 /* ========================================================= */
 
-.timer-box {
+.typing-game-timer-box {
     position: relative;
-
     min-width: 145px;
-
     padding: 0.85rem 1.2rem;
-
     text-align: center;
-
     border-radius: 18px;
-
     background:
         linear-gradient(
             180deg,
-            rgba(17, 27, 62, 0.97),
-            rgba(7, 12, 31, 0.96)
+            rgb(17 27 62 / 97%),
+            rgb(7 12 31 / 96%)
         );
-
     border:
-        1px solid rgba(66, 232, 255, 0.23);
-
+        1px solid rgb(66 232 255 / 23%);
     box-shadow:
-        0 16px 34px rgba(0, 0, 0, 0.34),
-        inset 0 1px 0 rgba(255, 255, 255, 0.04),
-        0 0 28px rgba(66, 232, 255, 0.08);
+        0 16px 34px rgb(0 0 0 / 34%),
+        inset 0 1px 0 rgb(255 255 255 / 4%),
+        0 0 28px rgb(66 232 255 / 8%);
 }
 
-.timer-box::after {
+.typing-game-timer-box::after {
     content: '';
-
     position: absolute;
-
     left: 14px;
     right: 14px;
     bottom: -1px;
-
     height: 2px;
-
     background:
         linear-gradient(
             90deg,
@@ -371,147 +300,106 @@
         );
 }
 
-.timer-label {
+.typing-game-timer-label {
     display: block;
-
-    font-family: 'Rajdhani', sans-serif;
-
+    font-family: Rajdhani, sans-serif;
     color: #7787ac;
-
     font-size: 0.65rem;
-
     letter-spacing: 0.16em;
 }
 
-.timer-value {
+.typing-game-timer-value {
     display: inline-block;
-
     margin-top: 0.1rem;
-
-    font-family: 'Rajdhani', sans-serif;
-
+    font-family: Rajdhani, sans-serif;
     font-size: 2.35rem;
     font-weight: 700;
-
     line-height: 1;
-
     color: white;
-
     text-shadow:
-        0 0 18px rgba(66, 232, 255, 0.26);
+        0 0 18px rgb(66 232 255 / 26%);
 }
 
-.timer-unit {
+.typing-game-timer-unit {
     margin-left: 0.25rem;
-
-    font-family: 'Rajdhani', sans-serif;
-
+    font-family: Rajdhani, sans-serif;
     color: #7688ad;
-
     font-size: 0.65rem;
 }
 
 /* ========================================================= */
+
 /* PLAYER ID */
+
 /* ========================================================= */
 
-.current-user {
+.typing-game-current-user {
     display: inline-flex;
     align-items: center;
-
     gap: 0.5rem;
-
     margin-bottom: 1.1rem;
-
     padding: 0.62rem 0.85rem;
-
     border-radius: 999px;
-
-    background: rgba(8, 13, 31, 0.66);
-
+    background: rgb(8 13 31 / 66%);
     border: 1px solid var(--arena-border);
-
     box-shadow:
-        0 10px 24px rgba(0, 0, 0, 0.18);
+        0 10px 24px rgb(0 0 0 / 18%);
 }
 
-.current-user-indicator {
+.typing-game-current-user-indicator {
     width: 8px;
     height: 8px;
-
     border-radius: 50%;
-
     background: var(--arena-green);
-
     box-shadow:
-        0 0 12px rgba(57, 230, 165, 0.8);
+        0 0 12px rgb(57 230 165 / 80%);
 }
 
-.current-user span {
-    font-family: 'Rajdhani', sans-serif;
-
+.typing-game-current-user span {
+    font-family: Rajdhani, sans-serif;
     color: #7183a8;
-
     font-size: 0.72rem;
-
     letter-spacing: 0.09em;
 }
 
-.current-user strong {
-    color: #ffffff;
-
+.typing-game-current-user strong {
+    color: #fff;
     font-size: 0.9rem;
 }
 
 /* ========================================================= */
+
 /* NAVIGATION */
+
 /* ========================================================= */
 
-.game-tabs {
+.typing-game-tabs {
     display: flex;
-
     width: fit-content;
-
     gap: 0.35rem;
-
     padding: 0.4rem;
-
     margin-bottom: 1.25rem;
-
     border-radius: 16px;
-
-    background: rgba(7, 12, 29, 0.75);
-
+    background: rgb(7 12 29 / 75%);
     border: 1px solid var(--arena-border);
-
     box-shadow:
-        0 14px 32px rgba(0, 0, 0, 0.23);
+        0 14px 32px rgb(0 0 0 / 23%);
 }
 
-.game-tab {
+.typing-game-tab {
     display: flex;
     align-items: center;
-
     gap: 0.5rem;
-
     padding: 0.72rem 1rem;
-
     border: none;
     border-radius: 11px;
-
     cursor: pointer;
-
     background: transparent;
-
-    font-family: 'Rajdhani', sans-serif;
-
+    font-family: Rajdhani, sans-serif;
     font-size: 0.92rem;
     font-weight: 700;
-
     letter-spacing: 0.05em;
-
     color: #7e8dac;
-
     transition:
         transform 0.2s ease,
         color 0.2s ease,
@@ -519,93 +407,78 @@
         box-shadow 0.2s ease;
 }
 
-.tab-number {
+.typing-game-tab-number {
     color: #516083;
-
     font-size: 0.62rem;
 }
 
-.game-tab:hover {
-    color: #ffffff;
-
-    background: rgba(255, 255, 255, 0.035);
-
+.typing-game-tab:hover {
+    color: #fff;
+    background: rgb(255 255 255 / 3.5%);
     transform: translateY(-1px);
 }
 
-.active-tab {
-    color: #ffffff;
-
+.typing-game-active-tab {
+    color: #fff;
     background:
         linear-gradient(
             135deg,
             #4b72ff,
             #8758ff
         );
-
     box-shadow:
-        0 8px 24px rgba(78, 97, 255, 0.27);
+        0 8px 24px rgb(78 97 255 / 27%);
 }
 
-.active-tab .tab-number {
-    color: rgba(255, 255, 255, 0.7);
+.typing-game-active-tab .typing-game-tab-number {
+    color: rgb(255 255 255 / 70%);
 }
 
 /* ========================================================= */
+
 /* MAIN GRID */
+
 /* ========================================================= */
 
-.game-content {
+.typing-game-content {
     display: grid;
-
     grid-template-columns:
         minmax(0, 1fr)
         300px;
-
     gap: 1.2rem;
-
     align-items: start;
 }
 
-.typing-area,
-.players-panel,
-.data-section {
+.typing-game-typing-area,
+.typing-game-players-panel,
+.typing-game-data-section {
     background:
         linear-gradient(
             180deg,
-            rgba(13, 20, 48, 0.93),
-            rgba(7, 12, 29, 0.92)
+            rgb(13 20 48 / 93%),
+            rgb(7 12 29 / 92%)
         );
-
     border:
         1px solid var(--arena-border);
-
     box-shadow:
-        0 24px 55px rgba(0, 0, 0, 0.3),
-        inset 0 1px 0 rgba(255, 255, 255, 0.025);
+        0 24px 55px rgb(0 0 0 / 30%),
+        inset 0 1px 0 rgb(255 255 255 / 2.5%);
 }
 
-.typing-area {
+.typing-game-typing-area {
     position: relative;
-
     padding: 1.4rem;
-
     border-radius: 22px;
-
     overflow: hidden;
 }
 
-.typing-area::before {
+.typing-game-typing-area::before {
     content: '';
-
     position: absolute;
-
     left: 0;
     top: 0;
-
     width: 220px;
     height: 2px;
-
     background:
         linear-gradient(
             90deg,
@@ -615,82 +488,67 @@
 }
 
 /* ========================================================= */
+
 /* SECTION TITLES */
+
 /* ========================================================= */
 
-.section-top,
-.card-heading {
+.typing-game-section-top,
+.typing-game-card-heading {
     display: flex;
-
     align-items: flex-start;
     justify-content: space-between;
-
     gap: 1rem;
 }
 
-.section-code {
+.typing-game-section-code {
     display: block;
-
     margin-bottom: 0.15rem;
-
-    font-family: 'Rajdhani', sans-serif;
-
+    font-family: Rajdhani, sans-serif;
     color: var(--arena-cyan);
-
     font-size: 0.68rem;
     font-weight: 700;
-
     letter-spacing: 0.12em;
 }
 
-.section-top h2,
-.card-heading h2 {
+.typing-game-section-top h2,
+.typing-game-card-heading h2 {
     margin: 0;
-
-    font-family: 'Rajdhani', sans-serif;
-
+    font-family: Rajdhani, sans-serif;
     color: white;
-
     font-size: 1.28rem;
     font-weight: 700;
 }
 
-.progress-number {
-    font-family: 'Rajdhani', sans-serif;
-
+.typing-game-progress-number {
+    font-family: Rajdhani, sans-serif;
     font-size: 1.4rem;
     font-weight: 700;
-
-    color: #ffffff;
+    color: #fff;
 }
 
 /* ========================================================= */
+
 /* PROGRESS */
+
 /* ========================================================= */
 
-.progress-bar {
+.typing-game-progress-bar {
     width: 100%;
     height: 12px;
-
     margin-top: 0.8rem;
     margin-bottom: 1.3rem;
-
     overflow: hidden;
-
     border-radius: 999px;
-
-    background: rgba(255, 255, 255, 0.045);
-
+    background: rgb(255 255 255 / 4.5%);
     box-shadow:
-        inset 0 2px 8px rgba(0, 0, 0, 0.4);
+        inset 0 2px 8px rgb(0 0 0 / 40%);
 }
 
-.progress-fill {
+.typing-game-progress-fill {
     width: 0%;
     height: 100%;
-
     border-radius: inherit;
-
     background:
         linear-gradient(
             90deg,
@@ -698,64 +556,52 @@
             #3be5ff 55%,
             #8758ff
         );
-
     box-shadow:
-        0 0 22px rgba(66, 232, 255, 0.42);
-
+        0 0 22px rgb(66 232 255 / 42%);
     transition: width 0.25s ease;
 }
 
 /* ========================================================= */
+
 /* METRICS */
+
 /* ========================================================= */
 
-.typing-stats {
+.typing-game-typing-stats {
     display: grid;
-
     grid-template-columns:
         repeat(3, 1fr);
-
     gap: 0.85rem;
-
     margin-bottom: 1.2rem;
 }
 
-.stat-box {
+.typing-game-stat-box {
     position: relative;
-
     overflow: hidden;
-
     padding: 1rem;
-
     border-radius: 16px;
-
     text-align: center;
-
     background:
         linear-gradient(
             150deg,
-            rgba(20, 31, 68, 0.96),
-            rgba(8, 13, 31, 0.96)
+            rgb(20 31 68 / 96%),
+            rgb(8 13 31 / 96%)
         );
-
     border:
-        1px solid rgba(121, 150, 236, 0.12);
-
+        1px solid rgb(121 150 236 / 12%);
     box-shadow:
-        0 12px 28px rgba(0, 0, 0, 0.2);
+        0 12px 28px rgb(0 0 0 / 20%);
 }
 
-.stat-decoration {
+.typing-game-stat-decoration {
     position: absolute;
-
     left: 0;
     top: 0;
-
     width: 55%;
     height: 2px;
 }
 
-.accuracy-stat .stat-decoration {
+.typing-game-accuracy-stat .typing-game-stat-decoration {
     background:
         linear-gradient(
             90deg,
@@ -764,7 +610,7 @@
         );
 }
 
-.correct-stat .stat-decoration {
+.typing-game-correct-stat .typing-game-stat-decoration {
     background:
         linear-gradient(
             90deg,
@@ -773,7 +619,7 @@
         );
 }
 
-.error-stat .stat-decoration {
+.typing-game-error-stat .typing-game-stat-decoration {
     background:
         linear-gradient(
             90deg,
@@ -782,781 +628,604 @@
         );
 }
 
-.stat-box span {
+.typing-game-stat-box span {
     display: block;
-
-    font-family: 'Rajdhani', sans-serif;
-
+    font-family: Rajdhani, sans-serif;
     color: #7789af;
-
     font-size: 0.67rem;
     font-weight: 700;
-
     letter-spacing: 0.12em;
 }
 
-.stat-box strong {
+.typing-game-stat-box strong {
     display: block;
-
     margin-top: 0.18rem;
-
-    font-family: 'Rajdhani', sans-serif;
-
+    font-family: Rajdhani, sans-serif;
     font-size: 1.65rem;
     font-weight: 700;
-
     color: white;
 }
 
-.stat-box small {
+.typing-game-stat-box small {
     display: block;
-
     margin-top: 0.05rem;
-
     color: #526285;
-
     font-size: 0.68rem;
 }
 
 /* ========================================================= */
+
 /* TARGET */
+
 /* ========================================================= */
 
-.text-card {
+.typing-game-text-card {
     margin-bottom: 1.2rem;
-
     padding: 1.1rem 1.2rem;
-
     border-radius: 17px;
-
     background:
         linear-gradient(
             145deg,
-            rgba(17, 28, 63, 0.92),
-            rgba(7, 12, 30, 0.92)
+            rgb(17 28 63 / 92%),
+            rgb(7 12 30 / 92%)
         );
-
     border:
-        1px solid rgba(66, 232, 255, 0.11);
+        1px solid rgb(66 232 255 / 11%);
 }
 
-.target-status {
+.typing-game-target-status {
     padding: 0.18rem 0.45rem;
-
     border-radius: 6px;
-
-    font-family: 'Rajdhani', sans-serif;
-
+    font-family: Rajdhani, sans-serif;
     color: var(--arena-green);
-
     font-size: 0.65rem;
     font-weight: 700;
-
     letter-spacing: 0.08em;
-
-    background: rgba(57, 230, 165, 0.08);
-
+    background: rgb(57 230 165 / 8%);
     border:
-        1px solid rgba(57, 230, 165, 0.13);
+        1px solid rgb(57 230 165 / 13%);
 }
 
-.text-card p {
+.typing-game-text-card p {
     margin: 0.85rem 0 0;
-
     color: #d6e0f7;
-
     font-size: 1.03rem;
-
     line-height: 1.85;
 }
 
 /* ========================================================= */
+
 /* TYPE ZONE */
+
 /* ========================================================= */
 
-.input-card {
+.typing-game-input-card {
     display: flex;
-
     flex-direction: column;
-
     gap: 0.6rem;
 }
 
-.input-heading {
+.typing-game-input-heading {
     display: flex;
-
     justify-content: space-between;
-
     gap: 1rem;
 }
 
-.input-heading label {
-    font-family: 'Rajdhani', sans-serif;
-
+.typing-game-input-heading label {
+    font-family: Rajdhani, sans-serif;
     font-size: 0.78rem;
     font-weight: 700;
-
     letter-spacing: 0.1em;
-
     color: #c5d2ef;
 }
 
-.input-heading span {
+.typing-game-input-heading span {
     color: #607197;
-
     font-size: 0.72rem;
 }
 
-.typing-console {
+.typing-game-typing-console {
     overflow: hidden;
-
     border-radius: 17px;
-
     border:
-        1px solid rgba(79, 140, 255, 0.2);
-
+        1px solid rgb(79 140 255 / 20%);
     background: #040817;
-
     box-shadow:
-        inset 0 3px 14px rgba(0, 0, 0, 0.45);
+        inset 0 3px 14px rgb(0 0 0 / 45%);
 }
 
-.console-top {
+.typing-game-console-top {
     display: flex;
-
     align-items: center;
     justify-content: space-between;
-
     gap: 1rem;
-
     padding: 0.55rem 0.75rem;
-
     border-bottom:
-        1px solid rgba(121, 150, 236, 0.09);
-
+        1px solid rgb(121 150 236 / 9%);
     background:
-        rgba(255, 255, 255, 0.025);
+        rgb(255 255 255 / 2.5%);
 }
 
-.console-top > span {
+.typing-game-console-top > span {
     color: #526385;
-
     font-size: 0.66rem;
 }
 
-.console-dots {
+.typing-game-console-dots {
     display: flex;
-
     gap: 0.3rem;
 }
 
-.console-dots span {
+.typing-game-console-dots span {
     width: 7px;
     height: 7px;
-
     border-radius: 50%;
 }
 
-.console-dots span:nth-child(1) {
+.typing-game-console-dot-red {
     background: var(--arena-red);
 }
 
-.console-dots span:nth-child(2) {
+.typing-game-console-dot-yellow {
     background: var(--arena-yellow);
 }
 
-.console-dots span:nth-child(3) {
+.typing-game-console-dot-green {
     background: var(--arena-green);
 }
 
-.input-card textarea {
+.typing-game-input-card textarea {
     width: 100%;
     min-height: 130px;
-
     resize: none;
-
     padding: 1rem;
-
     box-sizing: border-box;
-
     border: none;
-
     outline: none;
-
     color: #f3f6ff;
-
     background: transparent;
-
     font-family:
         'Space Grotesk',
         sans-serif;
-
     font-size: 1rem;
-
     line-height: 1.7;
 }
 
-.input-card textarea::placeholder {
+.typing-game-input-card textarea::placeholder {
     color: #4c5c7d;
 }
 
-.typing-console:focus-within {
+.typing-game-typing-console:focus-within {
     border-color:
-        rgba(66, 232, 255, 0.55);
-
+        rgb(66 232 255 / 55%);
     box-shadow:
-        inset 0 3px 14px rgba(0, 0, 0, 0.45),
-        0 0 0 3px rgba(66, 232, 255, 0.06),
-        0 0 26px rgba(66, 232, 255, 0.08);
+        inset 0 3px 14px rgb(0 0 0 / 45%),
+        0 0 0 3px rgb(66 232 255 / 6%),
+        0 0 26px rgb(66 232 255 / 8%);
 }
 
-.input-card textarea:disabled {
+.typing-game-input-card textarea:disabled {
     color: #687899;
-
     cursor: not-allowed;
 }
 
 /* ========================================================= */
+
 /* PLAYERS */
+
 /* ========================================================= */
 
-.players-panel {
+.typing-game-players-panel {
     padding: 1.15rem;
-
     border-radius: 22px;
 }
 
-.players-header {
+.typing-game-players-header {
     display: flex;
-
     align-items: flex-start;
     justify-content: space-between;
-
     gap: 1rem;
-
     margin-bottom: 0.8rem;
 }
 
-.players-panel h2 {
+.typing-game-players-panel h2 {
     margin: 0;
-
-    font-family: 'Rajdhani', sans-serif;
-
+    font-family: Rajdhani, sans-serif;
     color: white;
-
     font-size: 1.5rem;
-
     text-transform: uppercase;
 }
 
-.players-count {
+.typing-game-players-count {
     display: inline-flex;
-
     align-items: center;
     justify-content: center;
-
     min-width: 32px;
     height: 32px;
-
     border-radius: 9px;
-
     background:
         linear-gradient(
             135deg,
             var(--arena-blue),
             var(--arena-purple)
         );
-
     color: white;
-
-    font-family: 'Rajdhani', sans-serif;
-
+    font-family: Rajdhani, sans-serif;
     font-weight: 700;
-
     box-shadow:
-        0 7px 20px rgba(85, 120, 255, 0.25);
+        0 7px 20px rgb(85 120 255 / 25%);
 }
 
-.lobby-status {
+.typing-game-lobby-status {
     display: flex;
-
     align-items: center;
-
     gap: 0.4rem;
-
     margin-bottom: 0.8rem;
-
     padding-bottom: 0.7rem;
-
     border-bottom:
-        1px solid rgba(121, 150, 236, 0.08);
-
-    font-family: 'Rajdhani', sans-serif;
-
+        1px solid rgb(121 150 236 / 8%);
+    font-family: Rajdhani, sans-serif;
     color: #64769b;
-
     font-size: 0.65rem;
-
     letter-spacing: 0.09em;
 }
 
-.lobby-pulse {
+.typing-game-lobby-pulse {
     width: 7px;
     height: 7px;
-
     border-radius: 50%;
-
     background: var(--arena-green);
-
     box-shadow:
-        0 0 12px rgba(57, 230, 165, 0.8);
+        0 0 12px rgb(57 230 165 / 80%);
 }
 
-.player-card {
+.typing-game-player-card {
     display: flex;
-
     align-items: center;
-
     gap: 0.75rem;
-
     margin-bottom: 0.65rem;
-
     padding: 0.85rem;
-
     border-radius: 15px;
-
     background:
         linear-gradient(
             145deg,
-            rgba(18, 28, 61, 0.9),
-            rgba(7, 12, 29, 0.93)
+            rgb(18 28 61 / 90%),
+            rgb(7 12 29 / 93%)
         );
-
     border:
-        1px solid rgba(121, 150, 236, 0.1);
-
+        1px solid rgb(121 150 236 / 10%);
     transition:
         transform 0.2s ease,
         border-color 0.2s ease,
         box-shadow 0.2s ease;
 }
 
-.player-card:hover {
+.typing-game-player-card:hover {
     transform: translateY(-2px);
-
     border-color:
-        rgba(66, 232, 255, 0.22);
-
+        rgb(66 232 255 / 22%);
     box-shadow:
-        0 10px 24px rgba(0, 0, 0, 0.22);
+        0 10px 24px rgb(0 0 0 / 22%);
 }
 
-.current-player-card {
+.typing-game-current-player-card {
     border-color:
-        rgba(85, 120, 255, 0.35);
-
+        rgb(85 120 255 / 35%);
     background:
         linear-gradient(
             145deg,
-            rgba(38, 63, 132, 0.3),
-            rgba(7, 12, 29, 0.94)
+            rgb(38 63 132 / 30%),
+            rgb(7 12 29 / 94%)
         );
 }
 
-.player-avatar {
+.typing-game-player-avatar {
     display: flex;
-
     align-items: center;
     justify-content: center;
-
     flex: 0 0 auto;
-
     width: 42px;
     height: 42px;
-
     border-radius: 12px;
-
     background:
         linear-gradient(
             135deg,
             #5578ff,
             #8758ff
         );
-
     color: white;
-
-    font-family: 'Rajdhani', sans-serif;
-
+    font-family: Rajdhani, sans-serif;
     font-size: 1.05rem;
     font-weight: 700;
 }
 
-.player-info {
+.typing-game-player-info {
     min-width: 0;
-
     flex: 1;
 }
 
-.player-name {
+.typing-game-player-name {
     display: flex;
-
     align-items: center;
-
     gap: 0.35rem;
 }
 
-.player-name strong {
+.typing-game-player-name strong {
     overflow: hidden;
-
     text-overflow: ellipsis;
     white-space: nowrap;
-
     color: white;
-
     font-size: 0.85rem;
 }
 
-.you-badge {
+.typing-game-you-badge {
     padding: 0.12rem 0.35rem;
-
     border-radius: 999px;
-
-    font-family: 'Rajdhani', sans-serif;
-
+    font-family: Rajdhani, sans-serif;
     background:
-        rgba(66, 232, 255, 0.08);
-
+        rgb(66 232 255 / 8%);
     border:
-        1px solid rgba(66, 232, 255, 0.14);
-
+        1px solid rgb(66 232 255 / 14%);
     color:
         var(--arena-cyan) !important;
-
     font-size:
         0.58rem !important;
-
     font-weight: 700;
 }
 
-.player-mini-stats {
+.typing-game-player-mini-stats {
     display: flex;
-
     gap: 0.55rem;
-
     margin-top: 0.15rem;
 }
 
-.player-mini-stats span {
+.typing-game-player-mini-stats span {
     color: #7184aa;
-
-    font-family: 'Rajdhani', sans-serif;
-
+    font-family: Rajdhani, sans-serif;
     font-size: 0.68rem;
 }
 
-.player-score {
+.typing-game-player-score {
     display: flex;
-
     flex-direction: column;
-
     align-items: flex-end;
 }
 
-.player-score span {
+.typing-game-player-score span {
     color: #59698c;
-
     font-size: 0.58rem;
 }
 
-.player-score strong {
-    font-family: 'Rajdhani', sans-serif;
-
+.typing-game-player-score strong {
+    font-family: Rajdhani, sans-serif;
     color: white;
-
     font-size: 1rem;
 }
 
 /* ========================================================= */
+
 /* RESULT / WAITING */
+
 /* ========================================================= */
 
-.waiting-result-section,
-.results-section {
+.typing-game-waiting-result-section,
+.typing-game-results-section {
     margin-top: 1.25rem;
-
     padding: 1.15rem;
-
     border-radius: 17px;
 }
 
-.waiting-result-section {
+.typing-game-waiting-result-section {
     border:
-        1px solid rgba(255, 211, 78, 0.2);
-
+        1px solid rgb(255 211 78 / 20%);
     background:
         linear-gradient(
             145deg,
-            rgba(94, 68, 10, 0.25),
-            rgba(7, 12, 29, 0.92)
+            rgb(94 68 10 / 25%),
+            rgb(7 12 29 / 92%)
         );
 }
 
-.results-section {
+.typing-game-results-section {
     border:
-        1px solid rgba(85, 120, 255, 0.2);
-
+        1px solid rgb(85 120 255 / 20%);
     background:
         linear-gradient(
             145deg,
-            rgba(31, 45, 95, 0.7),
-            rgba(7, 12, 29, 0.93)
+            rgb(31 45 95 / 70%),
+            rgb(7 12 29 / 93%)
         );
 }
 
-.waiting-result-header,
-.results-header {
+.typing-game-waiting-result-header,
+.typing-game-results-header {
     display: flex;
-
     justify-content: space-between;
-
     align-items: flex-start;
-
     gap: 1rem;
 }
 
-.waiting-result-header h2,
-.results-header h2 {
+.typing-game-waiting-result-header h2,
+.typing-game-results-header h2 {
     margin: 0.15rem 0 0;
-
-    font-family: 'Rajdhani', sans-serif;
-
+    font-family: Rajdhani, sans-serif;
     color: white;
 }
 
-.results-label {
+.typing-game-results-label {
     color: var(--arena-cyan);
-
-    font-family: 'Rajdhani', sans-serif;
-
+    font-family: Rajdhani, sans-serif;
     font-size: 0.67rem;
     font-weight: 700;
-
     letter-spacing: 0.11em;
 }
 
-.waiting-status,
-.result-status {
+.typing-game-waiting-status,
+.typing-game-result-status {
     padding: 0.3rem 0.55rem;
-
     border-radius: 999px;
-
-    font-family: 'Rajdhani', sans-serif;
-
+    font-family: Rajdhani, sans-serif;
     font-size: 0.65rem;
     font-weight: 700;
 }
 
-.waiting-status {
+.typing-game-waiting-status {
     color: var(--arena-yellow);
-
     background:
-        rgba(255, 211, 78, 0.08);
-
+        rgb(255 211 78 / 8%);
     border:
-        1px solid rgba(255, 211, 78, 0.13);
+        1px solid rgb(255 211 78 / 13%);
 }
 
-.result-status {
+.typing-game-result-status {
     color: #94afff;
-
     background:
-        rgba(85, 120, 255, 0.08);
-
+        rgb(85 120 255 / 8%);
     border:
-        1px solid rgba(85, 120, 255, 0.13);
+        1px solid rgb(85 120 255 / 13%);
 }
 
-.waiting-result-message,
-.result-message {
+.typing-game-waiting-result-message,
+.typing-game-result-message {
     color: #8e9fc2;
-
     line-height: 1.5;
 }
 
-.final-stats {
+.typing-game-final-stats {
     display: grid;
-
     grid-template-columns:
         repeat(3, 1fr);
-
     gap: 0.7rem;
 }
 
-.final-stat {
+.typing-game-final-stat {
     padding: 0.8rem;
-
     text-align: center;
-
     border-radius: 12px;
-
     background:
-        rgba(5, 9, 23, 0.65);
-
+        rgb(5 9 23 / 65%);
     border:
-        1px solid rgba(121, 150, 236, 0.08);
+        1px solid rgb(121 150 236 / 8%);
 }
 
-.final-stat span {
+.typing-game-final-stat span {
     display: block;
-
     color: #617297;
-
     font-size: 0.62rem;
 }
 
-.final-stat strong {
+.typing-game-final-stat strong {
     display: block;
-
     margin-top: 0.12rem;
-
-    font-family: 'Rajdhani', sans-serif;
-
+    font-family: Rajdhani, sans-serif;
     font-size: 1.35rem;
-
     color: white;
 }
 
 /* ========================================================= */
+
 /* WINNER */
+
 /* ========================================================= */
 
-.winner-card {
+.typing-game-winner-card {
     padding: 0.9rem;
-
     border-radius: 14px;
-
     background:
         linear-gradient(
             135deg,
-            rgba(245, 158, 11, 0.18),
-            rgba(249, 115, 22, 0.07)
+            rgb(245 158 11 / 18%),
+            rgb(249 115 22 / 7%)
         );
-
     border:
-        1px solid rgba(255, 193, 64, 0.2);
+        1px solid rgb(255 193 64 / 20%);
 }
 
-.winner-label {
+.typing-game-winner-label {
     display: block;
-
     color: var(--arena-yellow);
-
-    font-family: 'Rajdhani', sans-serif;
-
+    font-family: Rajdhani, sans-serif;
     font-size: 0.65rem;
-
     letter-spacing: 0.1em;
 }
 
-.winner-name {
+.typing-game-winner-name {
     display: block;
-
     margin-top: 0.1rem;
-
     color: white;
-
-    font-family: 'Rajdhani', sans-serif;
-
+    font-family: Rajdhani, sans-serif;
     font-size: 1.45rem;
 }
 
 /* ========================================================= */
+
 /* RANKING */
+
 /* ========================================================= */
 
-.ranking-title {
+.typing-game-ranking-title {
     margin-top: 0.4rem;
 }
 
-.ranking-title h3 {
+.typing-game-ranking-title h3 {
     margin: 0;
-
-    font-family: 'Rajdhani', sans-serif;
-
+    font-family: Rajdhani, sans-serif;
     color: white;
 }
 
-.ranking-list {
+.typing-game-ranking-list {
     display: flex;
-
     flex-direction: column;
-
     gap: 0.6rem;
-
     margin-top: 0.7rem;
 }
 
-.ranking-player {
+.typing-game-ranking-player {
     display: grid;
-
     grid-template-columns:
         38px
         1fr
         auto;
-
     align-items: center;
-
     gap: 0.7rem;
-
     padding: 0.75rem;
-
     border-radius: 13px;
-
     background:
-        rgba(5, 9, 23, 0.68);
-
+        rgb(5 9 23 / 68%);
     border:
-        1px solid rgba(121, 150, 236, 0.08);
+        1px solid rgb(121 150 236 / 8%);
 }
 
-.ranking-winner {
+.typing-game-ranking-winner {
     border-color:
-        rgba(255, 211, 78, 0.18);
-
+        rgb(255 211 78 / 18%);
     background:
         linear-gradient(
             135deg,
-            rgba(132, 75, 10, 0.2),
-            rgba(5, 9, 23, 0.7)
+            rgb(132 75 10 / 20%),
+            rgb(5 9 23 / 70%)
         );
 }
 
-.ranking-position {
+.typing-game-ranking-position {
     display: flex;
-
     align-items: center;
     justify-content: center;
-
     width: 36px;
     height: 36px;
-
     border-radius: 10px;
-
     background:
         linear-gradient(
             135deg,
             #5578ff,
             #8758ff
         );
-
-    font-family: 'Rajdhani', sans-serif;
-
+    font-family: Rajdhani, sans-serif;
     color: white;
-
     font-weight: 700;
 }
 
-.ranking-winner .ranking-position {
+.typing-game-ranking-winner .typing-game-ranking-position {
     background:
         linear-gradient(
             135deg,
@@ -1565,386 +1234,305 @@
         );
 }
 
-.ranking-player-info {
+.typing-game-ranking-player-info {
     display: flex;
-
     align-items: center;
-
     gap: 0.35rem;
 }
 
-.ranking-player-info strong {
+.typing-game-ranking-player-info strong {
     color: white;
 }
 
-.winner-badge {
+.typing-game-winner-badge {
     padding: 0.12rem 0.35rem;
-
     border-radius: 999px;
-
     color: var(--arena-yellow);
-
     background:
-        rgba(255, 211, 78, 0.08);
-
+        rgb(255 211 78 / 8%);
     border:
-        1px solid rgba(255, 211, 78, 0.13);
-
+        1px solid rgb(255 211 78 / 13%);
     font-size: 0.58rem;
 }
 
-.ranking-score {
+.typing-game-ranking-score {
     display: flex;
-
     flex-direction: column;
-
     align-items: flex-end;
 }
 
-.ranking-score span {
+.typing-game-ranking-score span {
     color: #596a8d;
-
     font-size: 0.58rem;
 }
 
-.ranking-score strong {
-    font-family: 'Rajdhani', sans-serif;
-
+.typing-game-ranking-score strong {
+    font-family: Rajdhani, sans-serif;
     color: white;
 }
 
 /* ========================================================= */
+
 /* DATA PANELS */
+
 /* ========================================================= */
 
-.data-section {
+.typing-game-data-section {
     padding: 1.4rem;
-
     border-radius: 22px;
 }
 
-.data-section-header {
+.typing-game-data-section-header {
     display: flex;
-
     align-items: flex-start;
     justify-content: space-between;
-
     gap: 1rem;
-
     margin-bottom: 1.3rem;
 }
 
-.data-section-header h2 {
+.typing-game-data-section-header h2 {
     margin: 0;
-
-    font-family: 'Rajdhani', sans-serif;
-
+    font-family: Rajdhani, sans-serif;
     font-size: 1.55rem;
-
     color: white;
-
     text-transform: uppercase;
 }
 
-.data-section-header p {
+.typing-game-data-section-header p {
     margin: 0.25rem 0 0;
-
     color: #7183a8;
-
     font-size: 0.86rem;
 }
 
-.refresh-button {
+.typing-game-refresh-button {
     padding: 0.6rem 0.85rem;
-
     border: none;
-
     border-radius: 10px;
-
     cursor: pointer;
-
     background:
         linear-gradient(
             135deg,
             #5578ff,
             #8758ff
         );
-
     color: white;
-
-    font-family: 'Rajdhani', sans-serif;
-
+    font-family: Rajdhani, sans-serif;
     font-weight: 700;
-
     box-shadow:
-        0 8px 20px rgba(85, 120, 255, 0.2);
+        0 8px 20px rgb(85 120 255 / 20%);
 }
 
-.refresh-button:hover:not(:disabled) {
-    transform: translateY(-1px);
-}
-
-.refresh-button:disabled {
+.typing-game-refresh-button:disabled {
     opacity: 0.5;
-
     cursor: not-allowed;
 }
 
+.typing-game-refresh-button:hover:not(:disabled) {
+    transform: translateY(-1px);
+}
+
 /* ========================================================= */
+
 /* EMPTY / LOADING / ERROR */
+
 /* ========================================================= */
 
-.loading-state,
-.empty-state,
-.error-state {
+.typing-game-loading-state,
+.typing-game-empty-state,
+.typing-game-error-state {
     padding: 1rem;
-
     text-align: center;
-
     border-radius: 13px;
 }
 
-.loading-state {
+.typing-game-loading-state {
     color: #8a9abb;
-
     background:
-        rgba(5, 9, 23, 0.64);
+        rgb(5 9 23 / 64%);
 }
 
-.empty-state {
+.typing-game-empty-state {
     display: flex;
-
     flex-direction: column;
-
     gap: 0.25rem;
-
     color: #8393b3;
-
     background:
-        rgba(5, 9, 23, 0.64);
-
+        rgb(5 9 23 / 64%);
     border:
-        1px dashed rgba(121, 150, 236, 0.14);
+        1px dashed rgb(121 150 236 / 14%);
 }
 
-.empty-code {
-    font-family: 'Rajdhani', sans-serif;
-
+.typing-game-empty-code {
+    font-family: Rajdhani, sans-serif;
     color: #526183;
-
     font-size: 0.62rem;
-
     letter-spacing: 0.12em;
 }
 
-.error-state {
+.typing-game-error-state {
     color: #ffc1cb;
-
     background:
-        rgba(114, 22, 41, 0.28);
-
+        rgb(114 22 41 / 28%);
     border:
-        1px solid rgba(255, 102, 125, 0.18);
+        1px solid rgb(255 102 125 / 18%);
 }
 
 /* ========================================================= */
+
 /* HISTORY */
+
 /* ========================================================= */
 
-.history-list {
+.typing-game-history-list {
     display: flex;
-
     flex-direction: column;
-
     gap: 0.75rem;
 }
 
-.history-card {
+.typing-game-history-card {
     padding: 0.9rem;
-
     border-radius: 15px;
-
     background:
         linear-gradient(
             145deg,
-            rgba(17, 27, 59, 0.9),
-            rgba(7, 12, 29, 0.93)
+            rgb(17 27 59 / 90%),
+            rgb(7 12 29 / 93%)
         );
-
     border:
-        1px solid rgba(121, 150, 236, 0.09);
+        1px solid rgb(121 150 236 / 9%);
 }
 
-.history-win {
+.typing-game-history-win {
     border-color:
-        rgba(57, 230, 165, 0.18);
-
+        rgb(57 230 165 / 18%);
     background:
         linear-gradient(
             145deg,
-            rgba(13, 78, 61, 0.18),
-            rgba(7, 12, 29, 0.93)
+            rgb(13 78 61 / 18%),
+            rgb(7 12 29 / 93%)
         );
 }
 
-.history-main {
+.typing-game-history-main {
     display: flex;
-
     justify-content: space-between;
-
     gap: 1rem;
-
     margin-bottom: 0.75rem;
 }
 
-.history-title {
+.typing-game-history-title {
     display: flex;
-
     align-items: center;
-
     gap: 0.4rem;
 }
 
-.history-title strong {
+.typing-game-history-title strong {
     color: white;
 }
 
-.history-date {
+.typing-game-history-date {
     display: block;
-
     margin-top: 0.15rem;
-
     color: #68799c;
-
     font-size: 0.77rem;
 }
 
-.win-badge {
+.typing-game-win-badge {
     padding: 0.12rem 0.35rem;
-
     border-radius: 999px;
-
     color: var(--arena-green);
-
     background:
-        rgba(57, 230, 165, 0.08);
-
+        rgb(57 230 165 / 8%);
     border:
-        1px solid rgba(57, 230, 165, 0.13);
-
+        1px solid rgb(57 230 165 / 13%);
     font-size: 0.58rem;
 }
 
-.history-position {
+.typing-game-history-position {
     display: flex;
-
     flex-direction: column;
-
     align-items: flex-end;
 }
 
-.history-position span {
+.typing-game-history-position span {
     color: #56678a;
-
     font-size: 0.58rem;
 }
 
-.history-position strong {
-    font-family: 'Rajdhani', sans-serif;
-
+.typing-game-history-position strong {
+    font-family: Rajdhani, sans-serif;
     color: white;
 }
 
-.history-metrics {
+.typing-game-history-metrics {
     display: grid;
-
     grid-template-columns:
         repeat(3, 1fr);
-
     gap: 0.6rem;
 }
 
-.history-metrics > div {
+.typing-game-history-metrics > div {
     padding: 0.7rem;
-
     text-align: center;
-
     border-radius: 11px;
-
     background:
-        rgba(5, 9, 23, 0.6);
+        rgb(5 9 23 / 60%);
 }
 
-.history-metrics span {
+.typing-game-history-metrics span {
     display: block;
-
     color: #56678a;
-
     font-size: 0.58rem;
 }
 
-.history-metrics strong {
+.typing-game-history-metrics strong {
     display: block;
-
     margin-top: 0.1rem;
-
     color: white;
-
-    font-family: 'Rajdhani', sans-serif;
+    font-family: Rajdhani, sans-serif;
 }
 
 /* ========================================================= */
+
 /* STATS */
+
 /* ========================================================= */
 
-.stats-dashboard {
+.typing-game-stats-dashboard {
     display: flex;
-
     flex-direction: column;
-
     gap: 0.9rem;
 }
 
-.stats-grid {
+.typing-game-stats-grid {
     display: grid;
-
     grid-template-columns:
         repeat(4, 1fr);
-
     gap: 0.75rem;
 }
 
-.stats-card {
+.typing-game-stats-card {
     position: relative;
-
     overflow: hidden;
-
     padding: 0.9rem;
-
     border-radius: 14px;
-
     background:
         linear-gradient(
             150deg,
-            rgba(19, 30, 65, 0.93),
-            rgba(7, 12, 29, 0.93)
+            rgb(19 30 65 / 93%),
+            rgb(7 12 29 / 93%)
         );
-
     border:
-        1px solid rgba(121, 150, 236, 0.09);
+        1px solid rgb(121 150 236 / 9%);
 }
 
-.stats-card::before {
+.typing-game-stats-card::before {
     content: '';
-
     position: absolute;
-
     top: 0;
     left: 0;
-
     width: 55%;
     height: 2px;
-
     background:
         linear-gradient(
             90deg,
@@ -1953,210 +1541,182 @@
         );
 }
 
-.stats-card span {
+.typing-game-stats-card span {
     display: block;
-
     color: #64769a;
-
     font-size: 0.6rem;
 }
 
-.stats-card strong {
+.typing-game-stats-card strong {
     display: block;
-
     margin-top: 0.18rem;
-
-    font-family: 'Rajdhani', sans-serif;
-
+    font-family: Rajdhani, sans-serif;
     color: white;
-
     font-size: 1.45rem;
 }
 
-.last-played-card {
+.typing-game-last-played-card {
     display: flex;
-
     justify-content: space-between;
-
     align-items: center;
-
     gap: 1rem;
-
     padding: 0.9rem;
-
     border-radius: 13px;
-
     background:
         linear-gradient(
             135deg,
-            rgba(85, 120, 255, 0.1),
-            rgba(135, 88, 255, 0.08)
+            rgb(85 120 255 / 10%),
+            rgb(135 88 255 / 8%)
         );
-
     border:
-        1px solid rgba(85, 120, 255, 0.12);
+        1px solid rgb(85 120 255 / 12%);
 }
 
-.last-played-card span {
+.typing-game-last-played-card span {
     display: block;
-
-    font-family: 'Rajdhani', sans-serif;
-
+    font-family: Rajdhani, sans-serif;
     color: #7283a7;
-
     font-size: 0.65rem;
 }
 
-.last-played-card small {
+.typing-game-last-played-card small {
     display: block;
-
     margin-top: 0.1rem;
-
     color: #4f5f80;
-
     font-size: 0.65rem;
 }
 
-.last-played-card strong {
+.typing-game-last-played-card strong {
     color: white;
 }
 
 /* ========================================================= */
+
 /* NO PLAYERS */
+
 /* ========================================================= */
 
-.no-players {
+.typing-game-no-players {
     padding: 0.9rem;
-
     text-align: center;
-
     border-radius: 12px;
-
     color: #7586a8;
-
     background:
-        rgba(5, 9, 23, 0.62);
-
+        rgb(5 9 23 / 62%);
     border:
-        1px dashed rgba(121, 150, 236, 0.12);
+        1px dashed rgb(121 150 236 / 12%);
 }
 
 /* ========================================================= */
+
 /* RESPONSIVE */
+
 /* ========================================================= */
 
-@media (max-width: 1100px) {
-
-    .game-content {
+@media (width <= 1100px) {
+    .typing-game-content {
         grid-template-columns:
             minmax(0, 1fr)
             270px;
     }
 
-    .stats-grid {
+    .typing-game-stats-grid {
         grid-template-columns:
             repeat(2, 1fr);
     }
 }
 
-@media (max-width: 900px) {
-
+@media (width <= 900px) {
     .typing-game {
         padding: 1rem;
     }
 
-    .game-content {
+    .typing-game-content {
         grid-template-columns: 1fr;
     }
 
-    .players-panel {
+    .typing-game-players-panel {
         order: 2;
     }
 
-    .game-tabs {
+    .typing-game-tabs {
         width: 100%;
-
         box-sizing: border-box;
     }
 
-    .game-tab {
+    .typing-game-tab {
         flex: 1;
-
         justify-content: center;
     }
 }
 
-@media (max-width: 650px) {
-
-    .game-header {
+@media (width <= 650px) {
+    .typing-game-header {
         flex-direction: column;
     }
 
-    .game-header h1 {
+    .typing-game-header h1 {
         font-size: 2.5rem;
     }
 
-    .header-hud {
+    .typing-game-header-hud {
         width: 100%;
-
         justify-content: space-between;
     }
 
-    .timer-box {
+    .typing-game-timer-box {
         flex: 1;
     }
 
-    .typing-stats {
+    .typing-game-typing-stats {
         grid-template-columns: 1fr;
     }
 
-    .final-stats {
+    .typing-game-final-stats {
         grid-template-columns: 1fr;
     }
 
-    .stats-grid {
+    .typing-game-stats-grid {
         grid-template-columns: 1fr;
     }
 
-    .history-metrics {
+    .typing-game-history-metrics {
         grid-template-columns: 1fr;
     }
 
-    .history-main,
-    .waiting-result-header,
-    .results-header,
-    .data-section-header,
-    .last-played-card {
+    .typing-game-history-main,
+    .typing-game-waiting-result-header,
+    .typing-game-results-header,
+    .typing-game-data-section-header,
+    .typing-game-last-played-card {
         flex-direction: column;
     }
 
-    .history-position {
+    .typing-game-history-position {
         align-items: flex-start;
     }
 
-    .input-heading {
+    .typing-game-input-heading {
         flex-direction: column;
-
         gap: 0.25rem;
     }
 
-    .ranking-player {
+    .typing-game-ranking-player {
         grid-template-columns:
             38px
             1fr;
     }
 
-    .ranking-score {
+    .typing-game-ranking-score {
         grid-column: 2;
-
         align-items: flex-start;
     }
 
-    .game-tabs {
+    .typing-game-tabs {
         flex-direction: column;
     }
 
-    .game-tab {
+    .typing-game-tab {
         width: 100%;
     }
 }
