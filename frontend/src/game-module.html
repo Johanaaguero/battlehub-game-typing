@@ -1,0 +1,17 @@
+<template>
+  <section class="typing-game">
+    <h1>Typing Battle</h1>
+
+    <p if.bind="context">
+      Partida: ${context.matchId}
+    </p>
+
+    <p if.bind="context">
+      Jugador: ${context.currentUser.displayName}
+    </p>
+
+    <p if.bind="!context">
+      Esperando información de la partida...
+    </p>
+  </section>
+</template>

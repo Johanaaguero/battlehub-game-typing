@@ -1,0 +1,14 @@
+.typing-game {
+    width: 100%;
+    min-height: 300px;
+    padding: 2rem;
+    box-sizing: border-box;
+}
+
+    .typing-game h1 {
+        margin-top: 0;
+    }
+
+    .typing-game p {
+        margin: 0.5rem 0;
+    }
