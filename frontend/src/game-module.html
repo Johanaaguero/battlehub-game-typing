@@ -1,17 +1,1038 @@
 <template>
-  <section class="typing-game">
-    <h1>Typing Battle</h1>
+    <section class="typing-game">
 
-    <p if.bind="context">
-      Partida: ${context.matchId}
-    </p>
+        <!-- ================================================= -->
+        <!-- HEADER -->
+        <!-- ================================================= -->
 
-    <p if.bind="context">
-      Jugador: ${context.currentUser.displayName}
-    </p>
+        <header class="game-header">
 
-    <p if.bind="!context">
-      Esperando información de la partida...
-    </p>
-  </section>
+            <div class="game-brand">
+
+                <div class="brand-line">
+                    <span class="brand-mark"></span>
+
+                    <span class="brand-system">
+                        BATTLEHUB ARENA
+                    </span>
+                </div>
+
+                <h1>
+                    TYPING
+                    <span>BATTLE</span>
+                </h1>
+
+                <p class="game-subtitle">
+                    Competitive Typing Arena
+                </p>
+
+                <div
+                    if.bind="context"
+                    class="match-info">
+
+                    <span>SESSION</span>
+
+                    <strong>
+                        ${context.matchId}
+                    </strong>
+
+                </div>
+
+            </div>
+
+            <div class="header-hud">
+
+                <div class="match-state">
+
+                    <span
+                        if.bind="!isTimeUp && !matchFinished"
+                        class="state-dot live-dot">
+                    </span>
+
+                    <span
+                        if.bind="isTimeUp && !matchFinished"
+                        class="state-dot waiting-dot">
+                    </span>
+
+                    <span
+                        if.bind="matchFinished"
+                        class="state-dot finished-dot">
+                    </span>
+
+                    <strong
+                        if.bind="!isTimeUp && !matchFinished">
+                        LIVE
+                    </strong>
+
+                    <strong
+                        if.bind="isTimeUp && !matchFinished">
+                        WAITING
+                    </strong>
+
+                    <strong
+                        if.bind="matchFinished">
+                        FINISHED
+                    </strong>
+
+                </div>
+
+                <div class="timer-box">
+
+                    <span class="timer-label">
+                        TIME LEFT
+                    </span>
+
+                    <strong class="timer-value">
+                        ${timeRemaining}
+                    </strong>
+
+                    <span class="timer-unit">
+                        SEC
+                    </span>
+
+                </div>
+
+            </div>
+
+        </header>
+
+        <!-- ================================================= -->
+        <!-- CURRENT PLAYER -->
+        <!-- ================================================= -->
+
+        <div
+            if.bind="context"
+            class="current-user">
+
+            <div class="current-user-indicator"></div>
+
+            <span>
+                PLAYER
+            </span>
+
+            <strong>
+                ${context.currentUser.displayName}
+            </strong>
+
+        </div>
+
+        <div
+            if.bind="!context"
+            class="waiting-message">
+
+            Esperando información de la partida...
+
+        </div>
+
+        <div if.bind="context">
+
+            <!-- ============================================= -->
+            <!-- NAVIGATION -->
+            <!-- ============================================= -->
+
+            <nav class="game-tabs">
+
+                <button
+                    type="button"
+                    class.bind="
+                        activeSection === 'game'
+                            ? 'game-tab active-tab'
+                            : 'game-tab'
+                    "
+                    click.trigger="showGame()">
+
+                    <span class="tab-number">
+                        01
+                    </span>
+
+                    JUEGO
+
+                </button>
+
+                <button
+                    type="button"
+                    class.bind="
+                        activeSection === 'history'
+                            ? 'game-tab active-tab'
+                            : 'game-tab'
+                    "
+                    click.trigger="showHistory()">
+
+                    <span class="tab-number">
+                        02
+                    </span>
+
+                    HISTORIAL
+
+                </button>
+
+                <button
+                    type="button"
+                    class.bind="
+                        activeSection === 'stats'
+                            ? 'game-tab active-tab'
+                            : 'game-tab'
+                    "
+                    click.trigger="showStats()">
+
+                    <span class="tab-number">
+                        03
+                    </span>
+
+                    ESTADÍSTICAS
+
+                </button>
+
+            </nav>
+
+            <!-- ============================================= -->
+            <!-- GAME -->
+            <!-- ============================================= -->
+
+            <div
+                if.bind="activeSection === 'game'"
+                class="game-content">
+
+                <main class="typing-area">
+
+                    <!-- ===================================== -->
+                    <!-- PROGRESS -->
+                    <!-- ===================================== -->
+
+                    <div class="section-top">
+
+                        <div>
+                            <span class="section-code">
+                                MATCH PROGRESS
+                            </span>
+
+                            <h2>
+                                Carrera de escritura
+                            </h2>
+                        </div>
+
+                        <div class="progress-number">
+                            ${progress}%
+                        </div>
+
+                    </div>
+
+                    <div class="progress-bar">
+
+                        <div
+                            class="progress-fill"
+                            style="width: ${progress}%">
+                        </div>
+
+                    </div>
+
+                    <!-- ===================================== -->
+                    <!-- METRICS -->
+                    <!-- ===================================== -->
+
+                    <div class="typing-stats">
+
+                        <div class="stat-box accuracy-stat">
+
+                            <div class="stat-decoration"></div>
+
+                            <span>
+                                PRECISIÓN
+                            </span>
+
+                            <strong>
+                                ${accuracy}%
+                            </strong>
+
+                            <small>
+                                Accuracy
+                            </small>
+
+                        </div>
+
+                        <div class="stat-box correct-stat">
+
+                            <div class="stat-decoration"></div>
+
+                            <span>
+                                CORRECTOS
+                            </span>
+
+                            <strong>
+                                ${correctCharacters}
+                            </strong>
+
+                            <small>
+                                Hits
+                            </small>
+
+                        </div>
+
+                        <div class="stat-box error-stat">
+
+                            <div class="stat-decoration"></div>
+
+                            <span>
+                                ERRORES
+                            </span>
+
+                            <strong>
+                                ${incorrectCharacters}
+                            </strong>
+
+                            <small>
+                                Misses
+                            </small>
+
+                        </div>
+
+                    </div>
+
+                    <!-- ===================================== -->
+                    <!-- TARGET TEXT -->
+                    <!-- ===================================== -->
+
+                    <div class="text-card">
+
+                        <div class="card-heading">
+
+                            <div>
+                                <span class="section-code">
+                                    TARGET
+                                </span>
+
+                                <h2>
+                                    Texto objetivo
+                                </h2>
+                            </div>
+
+                            <span class="target-status">
+                                READY
+                            </span>
+
+                        </div>
+
+                        <p>
+                            ${targetText}
+                        </p>
+
+                    </div>
+
+                    <!-- ===================================== -->
+                    <!-- TYPING INPUT -->
+                    <!-- ===================================== -->
+
+                    <div class="input-card">
+
+                        <div class="input-heading">
+
+                            <label for="typingInput">
+                                TYPE ZONE
+                            </label>
+
+                            <span>
+                                Escribí exactamente el texto superior
+                            </span>
+
+                        </div>
+
+                        <div class="typing-console">
+
+                            <div class="console-top">
+
+                                <div class="console-dots">
+                                    <span></span>
+                                    <span></span>
+                                    <span></span>
+                                </div>
+
+                                <span>
+                                    battlehub://typing-input
+                                </span>
+
+                            </div>
+
+                            <textarea
+                                id="typingInput"
+                                rows="5"
+                                placeholder="Comenzá a escribir aquí..."
+                                value.bind="typedText"
+                                input.trigger="handleTyping()"
+                                disabled.bind="
+                                    isTimeUp ||
+                                    matchFinished
+                                ">
+                            </textarea>
+
+                        </div>
+
+                    </div>
+
+                    <!-- ===================================== -->
+                    <!-- WAITING RESULT -->
+                    <!-- ===================================== -->
+
+                    <section
+                        if.bind="
+                            isTimeUp &&
+                            !matchFinished
+                        "
+                        class="waiting-result-section">
+
+                        <div class="waiting-result-header">
+
+                            <div>
+
+                                <span class="results-label">
+                                    TIME OVER
+                                </span>
+
+                                <h2>
+                                    Tu participación terminó
+                                </h2>
+
+                            </div>
+
+                            <span class="waiting-status">
+                                SYNCING RESULT
+                            </span>
+
+                        </div>
+
+                        <p class="waiting-result-message">
+                            Tus métricas finales están listas.
+                            Esperando el resultado oficial de la partida...
+                        </p>
+
+                        <div class="final-stats">
+
+                            <div class="final-stat">
+                                <span>WPM</span>
+                                <strong>${wpm}</strong>
+                            </div>
+
+                            <div class="final-stat">
+                                <span>PRECISIÓN</span>
+                                <strong>${accuracy}%</strong>
+                            </div>
+
+                            <div class="final-stat">
+                                <span>PROGRESO</span>
+                                <strong>${progress}%</strong>
+                            </div>
+
+                        </div>
+
+                    </section>
+
+                    <!-- ===================================== -->
+                    <!-- FINAL RESULT -->
+                    <!-- ===================================== -->
+
+                    <section
+                        if.bind="matchFinished"
+                        class="results-section">
+
+                        <div class="results-header">
+
+                            <div>
+
+                                <span class="results-label">
+                                    MATCH COMPLETE
+                                </span>
+
+                                <h2>
+                                    Resultado final
+                                </h2>
+
+                            </div>
+
+                            <span
+                                if.bind="matchOutcome"
+                                class="result-status">
+
+                                ${matchOutcome}
+
+                            </span>
+
+                        </div>
+
+                        <p
+                            if.bind="resultMessage"
+                            class="result-message">
+
+                            ${resultMessage}
+
+                        </p>
+
+                        <div
+                            if.bind="finalResult"
+                            class="final-results-content">
+
+                            <div
+                                if.bind="winnerName"
+                                class="winner-card">
+
+                                <span class="winner-label">
+                                    CHAMPION
+                                </span>
+
+                                <strong class="winner-name">
+                                    ${winnerName}
+                                </strong>
+
+                            </div>
+
+                            <div class="final-stats">
+
+                                <div class="final-stat">
+                                    <span>WPM</span>
+                                    <strong>${wpm}</strong>
+                                </div>
+
+                                <div class="final-stat">
+                                    <span>PRECISIÓN</span>
+                                    <strong>${accuracy}%</strong>
+                                </div>
+
+                                <div class="final-stat">
+                                    <span>PROGRESO</span>
+                                    <strong>${progress}%</strong>
+                                </div>
+
+                            </div>
+
+                            <div class="ranking-section">
+
+                                <div class="ranking-title">
+
+                                    <span class="section-code">
+                                        LEADERBOARD
+                                    </span>
+
+                                    <h3>
+                                        Clasificación
+                                    </h3>
+
+                                </div>
+
+                                <div class="ranking-list">
+
+                                    <div
+                                        repeat.for="
+                                            resultPlayer
+                                            of finalResult.players
+                                        "
+                                        class.bind="
+                                            isWinner(
+                                                resultPlayer.userId
+                                            )
+                                                ? 'ranking-player ranking-winner'
+                                                : 'ranking-player'
+                                        ">
+
+                                        <div class="ranking-position">
+                                            ${$index + 1}
+                                        </div>
+
+                                        <div class="ranking-player-info">
+
+                                            <strong>
+                                                ${resultPlayer.displayName}
+                                            </strong>
+
+                                            <span
+                                                if.bind="
+                                                    resultPlayer.userId ===
+                                                    context.currentUser.id
+                                                "
+                                                class="you-badge">
+
+                                                YOU
+
+                                            </span>
+
+                                            <span
+                                                if.bind="
+                                                    isWinner(
+                                                        resultPlayer.userId
+                                                    )
+                                                "
+                                                class="winner-badge">
+
+                                                WINNER
+
+                                            </span>
+
+                                        </div>
+
+                                        <div class="ranking-score">
+
+                                            <span>
+                                                SCORE
+                                            </span>
+
+                                            <strong>
+                                                ${resultPlayer.score}
+                                            </strong>
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </section>
+
+                </main>
+
+                <!-- ========================================= -->
+                <!-- PLAYERS -->
+                <!-- ========================================= -->
+
+                <aside class="players-panel">
+
+                    <div class="players-header">
+
+                        <div>
+
+                            <span class="section-code">
+                                LOBBY
+                            </span>
+
+                            <h2>
+                                Jugadores
+                            </h2>
+
+                        </div>
+
+                        <span class="players-count">
+                            ${players.length}
+                        </span>
+
+                    </div>
+
+                    <div
+                        class="lobby-status">
+
+                        <span class="lobby-pulse"></span>
+
+                        REAL-TIME SYNC
+
+                    </div>
+
+                    <div
+                        repeat.for="player of players"
+                        class.bind="
+                            player.userId ===
+                            context.currentUser.id
+                                ? 'player-card current-player-card'
+                                : 'player-card'
+                        ">
+
+                        <div class="player-avatar">
+                            ${player.displayName[0]}
+                        </div>
+
+                        <div class="player-info">
+
+                            <div class="player-name">
+
+                                <strong>
+                                    ${player.displayName}
+                                </strong>
+
+                                <span
+                                    if.bind="
+                                        player.userId ===
+                                        context.currentUser.id
+                                    "
+                                    class="you-badge">
+
+                                    YOU
+
+                                </span>
+
+                            </div>
+
+                            <div class="player-mini-stats">
+
+                                <span>
+                                    ${player.wpm ?? 0}
+                                    WPM
+                                </span>
+
+                                <span>
+                                    ${player.accuracy ?? 0}%
+                                    ACC
+                                </span>
+
+                            </div>
+
+                        </div>
+
+                        <div
+                            if.bind="
+                                player.score !== null
+                            "
+                            class="player-score">
+
+                            <span>
+                                SCORE
+                            </span>
+
+                            <strong>
+                                ${player.score}
+                            </strong>
+
+                        </div>
+
+                    </div>
+
+                    <div
+                        if.bind="
+                            players.length === 0
+                        "
+                        class="no-players">
+
+                        Esperando jugadores...
+
+                    </div>
+
+                </aside>
+
+            </div>
+
+            <!-- ============================================= -->
+            <!-- HISTORY -->
+            <!-- ============================================= -->
+
+            <section
+                if.bind="
+                    activeSection === 'history'
+                "
+                class="data-section">
+
+                <div class="data-section-header">
+
+                    <div>
+
+                        <span class="section-code">
+                            PLAYER RECORD
+                        </span>
+
+                        <h2>
+                            Historial de partidas
+                        </h2>
+
+                        <p>
+                            Tus partidas más recientes
+                            de Typing Battle.
+                        </p>
+
+                    </div>
+
+                    <button
+                        type="button"
+                        class="refresh-button"
+                        disabled.bind="historyLoading"
+                        click.trigger="refreshHistory()">
+
+                        ACTUALIZAR
+
+                    </button>
+
+                </div>
+
+                <div
+                    if.bind="historyLoading"
+                    class="loading-state">
+
+                    Sincronizando historial...
+
+                </div>
+
+                <div
+                    if.bind="
+                        historyError &&
+                        !historyLoading
+                    "
+                    class="error-state">
+
+                    ${historyError}
+
+                </div>
+
+                <div
+                    if.bind="
+                        historyLoaded &&
+                        !historyLoading &&
+                        history.length === 0
+                    "
+                    class="empty-state">
+
+                    <span class="empty-code">
+                        NO DATA
+                    </span>
+
+                    Todavía no tenés partidas registradas.
+
+                </div>
+
+                <div
+                    if.bind="
+                        history.length > 0 &&
+                        !historyLoading
+                    "
+                    class="history-list">
+
+                    <article
+                        repeat.for="item of history"
+                        class.bind="
+                            item.won
+                                ? 'history-card history-win'
+                                : 'history-card'
+                        ">
+
+                        <div class="history-main">
+
+                            <div>
+
+                                <div class="history-title">
+
+                                    <strong>
+                                        ${item.matchId}
+                                    </strong>
+
+                                    <span
+                                        if.bind="item.won"
+                                        class="win-badge">
+
+                                        VICTORY
+
+                                    </span>
+
+                                </div>
+
+                                <span class="history-date">
+                                    ${formatDate(
+                                        item.finishedAt
+                                    )}
+                                </span>
+
+                            </div>
+
+                            <div class="history-position">
+
+                                <span>
+                                    RANK
+                                </span>
+
+                                <strong>
+                                    ${item.position}
+                                    /
+                                    ${item.playersCount}
+                                </strong>
+
+                            </div>
+
+                        </div>
+
+                        <div class="history-metrics">
+
+                            <div>
+                                <span>SCORE</span>
+                                <strong>${item.score}</strong>
+                            </div>
+
+                            <div>
+                                <span>WPM</span>
+                                <strong>
+                                    ${formatMetric(
+                                        item.wpm
+                                    )}
+                                </strong>
+                            </div>
+
+                            <div>
+                                <span>ACCURACY</span>
+                                <strong>
+                                    ${formatMetric(
+                                        item.accuracy
+                                    )}%
+                                </strong>
+                            </div>
+
+                        </div>
+
+                    </article>
+
+                </div>
+
+            </section>
+
+            <!-- ============================================= -->
+            <!-- STATS -->
+            <!-- ============================================= -->
+
+            <section
+                if.bind="
+                    activeSection === 'stats'
+                "
+                class="data-section">
+
+                <div class="data-section-header">
+
+                    <div>
+
+                        <span class="section-code">
+                            PERFORMANCE CORE
+                        </span>
+
+                        <h2>
+                            Estadísticas
+                        </h2>
+
+                        <p>
+                            Resumen de tu rendimiento
+                            en Typing Battle.
+                        </p>
+
+                    </div>
+
+                    <button
+                        type="button"
+                        class="refresh-button"
+                        disabled.bind="statsLoading"
+                        click.trigger="refreshStats()">
+
+                        ACTUALIZAR
+
+                    </button>
+
+                </div>
+
+                <div
+                    if.bind="statsLoading"
+                    class="loading-state">
+
+                    Calculando estadísticas...
+
+                </div>
+
+                <div
+                    if.bind="
+                        statsError &&
+                        !statsLoading
+                    "
+                    class="error-state">
+
+                    ${statsError}
+
+                </div>
+
+                <div
+                    if.bind="
+                        stats &&
+                        !statsLoading
+                    "
+                    class="stats-dashboard">
+
+                    <div class="stats-grid">
+
+                        <div class="stats-card">
+                            <span>PARTIDAS</span>
+                            <strong>
+                                ${stats.gamesPlayed}
+                            </strong>
+                        </div>
+
+                        <div class="stats-card">
+                            <span>VICTORIAS</span>
+                            <strong>
+                                ${stats.wins}
+                            </strong>
+                        </div>
+
+                        <div class="stats-card">
+                            <span>WIN RATE</span>
+                            <strong>
+                                ${winRatePercentage}%
+                            </strong>
+                        </div>
+
+                        <div class="stats-card">
+                            <span>AVG SCORE</span>
+                            <strong>
+                                ${stats.averageScore}
+                            </strong>
+                        </div>
+
+                        <div class="stats-card">
+                            <span>BEST SCORE</span>
+                            <strong>
+                                ${stats.bestScore}
+                            </strong>
+                        </div>
+
+                        <div class="stats-card">
+                            <span>AVG WPM</span>
+                            <strong>
+                                ${formatMetric(
+                                    stats.averageWpm
+                                )}
+                            </strong>
+                        </div>
+
+                        <div class="stats-card">
+                            <span>BEST WPM</span>
+                            <strong>
+                                ${formatMetric(
+                                    stats.bestWpm
+                                )}
+                            </strong>
+                        </div>
+
+                        <div class="stats-card">
+                            <span>AVG ACCURACY</span>
+                            <strong>
+                                ${formatMetric(
+                                    stats.averageAccuracy
+                                )}%
+                            </strong>
+                        </div>
+
+                    </div>
+
+                    <div class="last-played-card">
+
+                        <div>
+                            <span>
+                                LAST MATCH
+                            </span>
+
+                            <small>
+                                Última actividad registrada
+                            </small>
+                        </div>
+
+                        <strong>
+                            ${formatDate(
+                                stats.lastPlayedAt
+                            )}
+                        </strong>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+        </div>
+
+    </section>
 </template>
