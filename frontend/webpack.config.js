@@ -5,6 +5,12 @@ const { ModuleFederationPlugin } = require('webpack').container;
 const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
 const Dotenv = require('dotenv-webpack');
 const TerserPlugin = require('terser-webpack-plugin');
+// ADR-003 §3: dependencias compartidas, idénticas en el Shell y en los tres juegos.
+const sharedDeps = require('./mf-shared');
+
+// ADR-003 §2: nombre del remote y puerto local del Equipo 4.
+const REMOTE_NAME = 'typingGame';
+const PORT = 4001;
 
 const cssLoader = {
     loader: 'css-loader'
@@ -49,7 +55,9 @@ module.exports = function (env, { analyze }) {
             filename: production
                 ? '[name].[contenthash].bundle.js'
                 : '[name].bundle.js',
-            publicPath: 'auto'
+            // ADR-003 §8: los chunks se piden a este servidor, no al del Shell.
+            publicPath: 'auto',
+            uniqueName: REMOTE_NAME
         },
 
         resolve: {
@@ -57,21 +65,14 @@ module.exports = function (env, { analyze }) {
             modules: [
                 path.resolve(__dirname, 'src'),
                 'node_modules'
-            ],
-            alias: production
-                ? {
-                    // add your production aliases here
-                }
-                : {
-                    ...getAureliaDevAliases()
-                    // add your development aliases here
-                }
+            ]
+            // Sin alias de desarrollo: hay que resolver los mismos paquetes de Aurelia que se comparten con el Shell.
         },
 
         devServer: {
             historyApiFallback: true,
             open: !process.env.CI,
-            port: 4001,
+            port: PORT,
             headers: {
                 'Access-Control-Allow-Origin': '*'
             }
@@ -113,23 +114,12 @@ module.exports = function (env, { analyze }) {
 
         plugins: [
             new ModuleFederationPlugin({
-                name: 'typingGame',
+                name: REMOTE_NAME,
                 filename: 'remoteEntry.js',
                 exposes: {
                     './GameModule': './src/game-module'
                 },
-                shared: {
-                    aurelia: {
-                        singleton: true,
-                        strictVersion: true,
-                        requiredVersion: '2.0.0-rc.2'
-                    },
-                    '@aurelia/router': {
-                        singleton: true,
-                        strictVersion: true,
-                        requiredVersion: '2.0.0-rc.2'
-                    }
-                }
+                shared: sharedDeps
             }),
 
             new HtmlWebpackPlugin({
@@ -148,39 +138,3 @@ module.exports = function (env, { analyze }) {
         ].filter(p => p)
     };
 };
-
-function getAureliaDevAliases() {
-    return [
-        'aurelia',
-        'fetch-client',
-        'kernel',
-        'metadata',
-        'platform',
-        'platform-browser',
-        'route-recognizer',
-        'router',
-        'router-lite',
-        'runtime',
-        'runtime-html',
-        'testing',
-        'state',
-        'ui-virtualization'
-    ].reduce((map, pkg) => {
-        const name = pkg === 'aurelia'
-            ? pkg
-            : `@aurelia/${pkg}`;
-
-        try {
-            const packageLocation = require.resolve(name);
-
-            map[name] = path.resolve(
-                packageLocation,
-                '../../esm/index.dev.mjs'
-            );
-        } catch {
-            // Package alias not available
-        }
-
-        return map;
-    }, {});
-}

@@ -94,10 +94,16 @@ export class GameModule implements IGameModule {
 
     public isTimeUp = false;
 
-    private timerStarted = false;
-
     private timerId:
         ReturnType<typeof setInterval> | null = null;
+
+    /**
+     * El jugador completó el texto: sus métricas quedan
+     * congeladas hasta que termine la partida.
+     */
+    public completed = false;
+
+    private endRequested = false;
 
     // ---------------------------------------------------------
     // VELOCIDAD
@@ -224,7 +230,10 @@ export class GameModule implements IGameModule {
             );
         }
 
-        if (this.running) {
+        if (
+            this.running ||
+            this.matchFinished
+        ) {
             return;
         }
 
@@ -253,6 +262,14 @@ export class GameModule implements IGameModule {
         }
 
         this.running = true;
+
+        /*
+         * El temporizador corre desde que empieza la partida
+         * (no desde la primera tecla), para que todos los
+         * jugadores terminen al mismo tiempo. Si venía de
+         * pause(), se reanuda donde quedó.
+         */
+        this.startTimer();
 
         console.log(
             'Typing Battle iniciado y unido a la partida:',
@@ -427,6 +444,18 @@ export class GameModule implements IGameModule {
                     notification
                 );
 
+                /*
+                 * Si otro jugador terminó la partida primero,
+                 * este cliente puede recibir already_exists
+                 * después del resultado: se conserva el resultado.
+                 */
+                if (
+                    notification.outcome === 'already_exists' &&
+                    this.finalResult !== null
+                ) {
+                    return;
+                }
+
                 this.running = false;
 
                 this.isTimeUp = true;
@@ -513,15 +542,8 @@ export class GameModule implements IGameModule {
      * Se ejecuta cada vez que el jugador escribe.
      */
     public handleTyping(): void {
-        if (
-            this.isTimeUp ||
-            this.matchFinished
-        ) {
+        if (!this.canType) {
             return;
-        }
-
-        if (!this.timerStarted) {
-            this.startTimer();
         }
 
         if (
@@ -548,9 +570,30 @@ export class GameModule implements IGameModule {
 
         this.calculateWpm();
 
+        /*
+         * Texto completo y sin errores: el jugador terminó.
+         * Sus métricas se congelan para que su velocidad no
+         * baje mientras espera el final de la partida.
+         */
+        if (this.typedText === this.targetText) {
+            this.completed = true;
+        }
+
         this.updateCurrentPlayerInterface();
 
         void this.sendCurrentMetrics();
+    }
+
+    /**
+     * Solo se puede escribir con la partida en curso.
+     */
+    public get canType(): boolean {
+        return (
+            this.running &&
+            !this.isTimeUp &&
+            !this.matchFinished &&
+            !this.completed
+        );
     }
 
     /**
@@ -662,14 +705,12 @@ export class GameModule implements IGameModule {
      */
     private startTimer(): void {
         if (
-            this.timerStarted ||
+            this.timerId !== null ||
             this.isTimeUp ||
             this.matchFinished
         ) {
             return;
         }
-
-        this.timerStarted = true;
 
         this.timerId =
             setInterval(() => {
@@ -679,7 +720,9 @@ export class GameModule implements IGameModule {
                 ) {
                     this.timeRemaining--;
 
-                    this.calculateWpm();
+                    if (!this.completed) {
+                        this.calculateWpm();
+                    }
 
                     this.updateCurrentPlayerInterface();
                 }
@@ -695,8 +738,6 @@ export class GameModule implements IGameModule {
 
                     this.updateCurrentPlayerInterface();
 
-                    void this.sendCurrentMetrics();
-
                     console.log(
                         'Tiempo finalizado.',
                         {
@@ -710,8 +751,50 @@ export class GameModule implements IGameModule {
                                 this.progress,
                         }
                     );
+
+                    void this.finishMatch();
                 }
             }, 1000);
+    }
+
+    /**
+     * Pide al servidor terminar la partida al acabarse el tiempo.
+     * Primero envía las métricas finales; el servidor arma el
+     * resultado, lo guarda y avisa a todos con matchEnded. Si otro
+     * jugador ya la terminó, el servidor responde already_exists
+     * solo a este cliente.
+     */
+    private async finishMatch(): Promise<void> {
+        if (
+            this.endRequested ||
+            this.matchFinished ||
+            !this.context
+        ) {
+            return;
+        }
+
+        this.endRequested = true;
+
+        try {
+            await this.sendCurrentMetrics();
+
+            // Inicio, fin, jugadores y ganador los decide el servidor.
+            await this.endMatch(
+                null,
+                null,
+                null,
+                null,
+                null
+            );
+        } catch (error) {
+            this.resultMessage =
+                'No fue posible finalizar la partida. Verificá la conexión con el servidor.';
+
+            console.error(
+                'Error al finalizar la partida:',
+                error
+            );
+        }
     }
 
     /**
@@ -751,7 +834,9 @@ export class GameModule implements IGameModule {
 
         this.isTimeUp = false;
 
-        this.timerStarted = false;
+        this.completed = false;
+
+        this.endRequested = false;
 
         this.players = [];
 

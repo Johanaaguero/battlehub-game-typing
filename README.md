@@ -75,6 +75,8 @@ La API completa, con ejemplos, está en [`docs/api-resultados.md`](docs/api-resu
 | `ConnectionStrings__Typing` | Cadena de conexión a MySQL (obligatoria: la API no arranca sin ella) |
 | `Database__MigrateOnStartup` | `true` para aplicar las migraciones al arrancar (por defecto `false`) |
 | `Cors__AllowedOrigins__0`, `__1`… | Orígenes del Shell / microfrontend |
+| `Matchmaking__BaseUrl` | URL del Matchmaking Service para avisar el fin de partida (ADR-004). Vacía: no se avisa |
+| `Matchmaking__Auth0__Domain`, `__ClientId`, `__ClientSecret`, `__Audience` | Cliente M2M de Auth0 con el permiso `matches.finish` (secretos: nunca en el repo) |
 
 ### Migraciones
 
@@ -115,6 +117,30 @@ Las de integración levantan la API completa contra MySQL real: cada clase crea 
 ### Uso desde el hub
 
 El hub `/hubs/typing` corre en el mismo proceso y guarda el resultado al terminar la partida inyectando `IResultsService` (ver [`docs/api-resultados.md`](docs/api-resultados.md#desde-el-backend-del-hub-sin-http)).
+
+## Integración con los otros equipos
+
+Puertos locales del proyecto:
+
+| Servicio | Equipo | URL local |
+|---|---|---|
+| Shell | 3 | `http://localhost:4000` |
+| Microfrontend de Typing (remote `typingGame`) | 4 | `http://localhost:4001/remoteEntry.js` |
+| API y hub de Typing | 4 | `http://localhost:5015` (`/api/games/typing`, `/hubs/typing`) |
+| Matchmaking | 2 | `http://localhost:5211` |
+| Profile | 1 | `http://localhost:5220` |
+
+**Shell (Equipo 3).** El microfrontend sigue ADR-003: remote `typingGame`, módulo `./GameModule`, puerto 4001 y el mismo `mf-shared.js` que el Shell. Para que el Shell lo cargue, su `config/remotes.local.json` necesita esta entrada:
+
+```json
+"typing": { "scope": "typingGame", "url": "http://localhost:4001/remoteEntry.js", "module": "./GameModule" }
+```
+
+Para probarlo juntos: MySQL (`docker compose up -d mysql`), la API (`dotnet run --project src/backend/TypingBattle.Api`), el remote (`npm start` en `frontend/`) y el Shell (`npm start` en su repo). La API ya permite los orígenes `http://localhost:4000` y `http://localhost:4001`.
+
+**Matchmaking (Equipo 2).** Al guardar el resultado, el backend avisa el fin de la partida con `POST /api/matches/{matchId}/finish` (ADR-004). Queda inactivo hasta configurar `Matchmaking__BaseUrl`; el detalle está en [`docs/api-typing-hub.md`](docs/api-typing-hub.md).
+
+**Profile (Equipo 1).** El Shell consulta los juegos habilitados (`typing` requiere `games.typing.play`). Todavía no hay autenticación en la API ni en el hub de Typing: depende de que se acuerde cómo validan los juegos los tokens de Auth0 (ADR-007 deja fuera a los juegos).
 
 ## Flujo de trabajo
 

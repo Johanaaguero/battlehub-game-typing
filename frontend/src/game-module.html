@@ -358,15 +358,50 @@
                                 placeholder="Comenzá a escribir aquí..."
                                 value.bind="typedText"
                                 input.trigger="handleTyping()"
-                                disabled.bind="
-                                    isTimeUp ||
-                                    matchFinished
-                                ">
-                            </textarea>
+                                disabled.bind="!canType"></textarea>
 
                         </div>
 
                     </div>
+
+                    <!-- ===================================== -->
+                    <!-- TEXT COMPLETED -->
+                    <!-- ===================================== -->
+
+                    <section
+                        if.bind="
+                            completed &&
+                            !isTimeUp &&
+                            !matchFinished
+                        "
+                        class="waiting-result-section">
+
+                        <div class="waiting-result-header">
+
+                            <div>
+
+                                <span class="results-label">
+                                    TEXT COMPLETED
+                                </span>
+
+                                <h2>
+                                    ¡Completaste el texto!
+                                </h2>
+
+                            </div>
+
+                            <span class="waiting-status">
+                                WAITING
+                            </span>
+
+                        </div>
+
+                        <p class="waiting-result-message">
+                            Tus métricas quedaron registradas.
+                            La partida termina cuando se acabe el tiempo.
+                        </p>
+
+                    </section>
 
                     <!-- ===================================== -->
                     <!-- WAITING RESULT -->

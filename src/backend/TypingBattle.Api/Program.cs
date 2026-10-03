@@ -1,6 +1,7 @@
 using TypingBattle.Api.Persistence;
 using TypingBattle.Api.Results;
 using TypingBattle.Api.Hubs;
+using TypingBattle.Api.Matchmaking;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,8 +15,8 @@ builder.Services.AddSignalR();
 builder.Services.AddSingleton<TypingMatchStore>();
 // Facade service for match logic (scoped to allow injecting IResultsService which is scoped)
 builder.Services.AddScoped<TypingMatchService>();
-// Notifier for Matchmaking is registered as a no-op by default; concrete integration is a decision of the team.
-builder.Services.AddSingleton<IMatchFinishedNotifier, NullMatchFinishedNotifier>();
+// Aviso de fin de partida a Matchmaking (ADR-004). Inactivo mientras Matchmaking:BaseUrl esté vacío.
+builder.Services.AddMatchmakingIntegration(builder.Configuration);
 
 // El microfrontend corre en otro origen (el Shell), así que el navegador exige CORS.
 // Los orígenes permitidos salen de la configuración: Cors:AllowedOrigins.
@@ -48,10 +49,3 @@ app.Run();
 
 // Permite que los proyectos de pruebas usen WebApplicationFactory<Program>.
 public partial class Program;
-
-// No-op notifier. The concrete notifier (HTTP callback, message bus, etc.) is a team decision and
-// should replace this registration when implemented.
-internal sealed class NullMatchFinishedNotifier : IMatchFinishedNotifier
-{
-    public Task NotifyMatchFinishedAsync(string matchId, SaveResultOutcome outcome, CancellationToken cancellationToken = default) => Task.CompletedTask;
-}
