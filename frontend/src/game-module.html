@@ -27,7 +27,7 @@
                 </p>
 
                 <div
-                    if.bind="context"
+                    if.bind="context && !isPracticeMode"
                     class="typing-game-match-info">
 
                     <span>SESSION</span>
@@ -120,7 +120,18 @@
             if.bind="!context"
             class="typing-game-waiting-message">
 
-            Esperando información de la partida...
+            <p>Esperando información de la partida...</p>
+
+            <p>También podés practicar por tu cuenta:</p>
+
+            <button
+                type="button"
+                class="typing-game-refresh-button"
+                click.trigger="startPractice()">
+
+                INICIAR PRÁCTICA
+
+            </button>
 
         </div>
 
@@ -150,6 +161,7 @@
                 </button>
 
                 <button
+                    if.bind="!isPracticeMode"
                     type="button"
                     class.bind="
                         activeSection === 'history'
@@ -167,6 +179,7 @@
                 </button>
 
                 <button
+                    if.bind="!isPracticeMode"
                     type="button"
                     class.bind="
                         activeSection === 'stats'
@@ -501,6 +514,40 @@
                         </p>
 
                         <div
+                            if.bind="isPracticeMode"
+                            class="typing-game-final-results-content">
+
+                            <div class="typing-game-final-stats">
+
+                                <div class="typing-game-final-stat">
+                                    <span>WPM</span>
+                                    <strong>${wpm}</strong>
+                                </div>
+
+                                <div class="typing-game-final-stat">
+                                    <span>PRECISIÓN</span>
+                                    <strong>${accuracy}%</strong>
+                                </div>
+
+                                <div class="typing-game-final-stat">
+                                    <span>PROGRESO</span>
+                                    <strong>${progress}%</strong>
+                                </div>
+
+                            </div>
+
+                            <button
+                                type="button"
+                                class="typing-game-refresh-button"
+                                click.trigger="restartPractice()">
+
+                                VOLVER A JUGAR
+
+                            </button>
+
+                        </div>
+
+                        <div
                             if.bind="finalResult"
                             class="typing-game-final-results-content">
 
@@ -656,7 +703,8 @@
 
                         <span class="typing-game-lobby-pulse"></span>
 
-                        REAL-TIME SYNC
+                        <span if.bind="!isPracticeMode">REAL-TIME SYNC</span>
+                        <span if.bind="isPracticeMode">PRÁCTICA LOCAL</span>
 
                     </div>
 
@@ -748,6 +796,7 @@
 
             <section
                 if.bind="
+                    !isPracticeMode &&
                     activeSection === 'history'
                 "
                 class="typing-game-data-section">
@@ -916,6 +965,7 @@
 
             <section
                 if.bind="
+                    !isPracticeMode &&
                     activeSection === 'stats'
                 "
                 class="typing-game-data-section">
