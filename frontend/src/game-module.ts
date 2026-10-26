@@ -73,6 +73,13 @@ type ActiveSection =
 export class GameModule implements IGameModule {
     public context: TypingGameContext | null = null;
 
+    /**
+     * Indica que el juego se está ejecutando localmente,
+     * sin Shell, matchId ni conexión SignalR.
+     */
+    public isPracticeMode = false;
+
+
     // =========================================================
     // INTERFAZ - WAYNER
     // =========================================================
@@ -179,6 +186,8 @@ export class GameModule implements IGameModule {
     public async initialize(
         context: GameContext
     ): Promise<void> {
+        this.isPracticeMode = false;
+
         if (!context.matchId) {
             throw new Error(
                 'matchId es requerido'
@@ -232,6 +241,51 @@ export class GameModule implements IGameModule {
         );
     }
 
+    /**
+     * Inicia una práctica local. No usa Shell, matchId,
+     * Auth0, SignalR ni el backend.
+     */
+    public startPractice(): void {
+        if (this.running) {
+            return;
+        }
+
+        this.stopTimer();
+        this.isPracticeMode = true;
+        this.context = {
+            gameType: 'practice',
+            currentUser: {
+                id: 'local-practice-player',
+                displayName: 'Jugador',
+            },
+        };
+
+        this.running = false;
+        this.resetGameInterface();
+
+        this.players = [
+            {
+                userId: 'local-practice-player',
+                displayName: 'Jugador',
+                score: null,
+                wpm: 0,
+                accuracy: 100,
+            },
+        ];
+
+        this.running = true;
+        this.startTimer();
+    }
+
+    /**
+     * Reinicia la práctica con el tiempo y las métricas iniciales.
+     */
+    public restartPractice(): void {
+        if (this.isPracticeMode) {
+            this.startPractice();
+        }
+    }
+
     public async start(): Promise<void> {
         if (!this.context) {
             throw new Error(
@@ -246,11 +300,21 @@ export class GameModule implements IGameModule {
             return;
         }
 
+        if (this.isPracticeMode) {
+            this.running = true;
+            this.startTimer();
+            return;
+        }
+
+        if (!this.context.matchId) {
+            throw new Error('matchId es requerido para una partida integrada');
+        }
+
         await this.signalR.connect();
 
         const joinRequest: JoinMatchRequest = {
             matchId:
-                this.context.matchId,
+                this.context.matchId!,
 
             currentUser:
                 this.context.currentUser.id,
@@ -299,7 +363,11 @@ export class GameModule implements IGameModule {
     public async dispose(): Promise<void> {
         this.stopTimer();
 
-        if (this.context) {
+        if (
+            this.context &&
+            !this.isPracticeMode &&
+            this.context.matchId
+        ) {
             const leaveRequest:
                 LeaveMatchRequest = {
 
@@ -327,13 +395,16 @@ export class GameModule implements IGameModule {
             }
         }
 
-        await this.signalR.disconnect();
+        if (!this.isPracticeMode) {
+            await this.signalR.disconnect();
+        }
 
         this.running = false;
 
         this.context = null;
 
         this.players = [];
+        this.isPracticeMode = false;
 
         console.log(
             'Typing Battle liberado'
@@ -590,6 +661,11 @@ export class GameModule implements IGameModule {
 
         this.updateCurrentPlayerInterface();
 
+        if (this.isPracticeMode && this.completed) {
+            this.finishPractice();
+            return;
+        }
+
         void this.sendCurrentMetrics();
     }
 
@@ -767,6 +843,34 @@ export class GameModule implements IGameModule {
     }
 
     /**
+     * Finaliza la práctica y conserva los resultados solo en memoria.
+     */
+    private finishPractice(): void {
+        if (!this.isPracticeMode || this.matchFinished) {
+            return;
+        }
+
+        this.running = false;
+        this.isTimeUp = true;
+        this.matchFinished = true;
+        this.matchOutcome = 'PRÁCTICA LOCAL';
+        this.resultMessage =
+            'Práctica finalizada. Tus resultados no se enviaron al servidor.';
+        this.stopTimer();
+        this.updateCurrentPlayerInterface();
+
+        const currentPlayer = this.players.find(
+            player => player.userId === this.context?.currentUser.id
+        );
+
+        if (currentPlayer) {
+            currentPlayer.score = this.correctCharacters;
+            currentPlayer.wpm = this.wpm;
+            currentPlayer.accuracy = this.accuracy;
+        }
+    }
+
+    /**
      * Pide al servidor terminar la partida al acabarse el tiempo.
      * Primero envía las métricas finales; el servidor arma el
      * resultado, lo guarda y avisa a todos con matchEnded. Si otro
@@ -774,6 +878,11 @@ export class GameModule implements IGameModule {
      * solo a este cliente.
      */
     private async finishMatch(): Promise<void> {
+        if (this.isPracticeMode) {
+            this.finishPractice();
+            return;
+        }
+
         if (
             this.endRequested ||
             this.matchFinished ||
@@ -911,7 +1020,7 @@ export class GameModule implements IGameModule {
     private async sendCurrentMetrics():
         Promise<void> {
 
-        if (!this.context) {
+        if (!this.context || this.isPracticeMode) {
             return;
         }
 
@@ -1391,9 +1500,9 @@ export class GameModule implements IGameModule {
         accuracy: number | null
     ): Promise<boolean> {
 
-        if (!this.context) {
+        if (!this.context || this.isPracticeMode || !this.context.matchId) {
             throw new Error(
-                'El juego debe inicializarse antes de enviar estadísticas'
+                'Las estadísticas remotas requieren una partida integrada'
             );
         }
 
@@ -1444,9 +1553,9 @@ export class GameModule implements IGameModule {
             unknown | null
     ): Promise<void> {
 
-        if (!this.context) {
+        if (!this.context || this.isPracticeMode || !this.context.matchId) {
             throw new Error(
-                'El juego debe inicializarse antes de finalizar'
+                'Finalizar en el servidor requiere una partida integrada'
             );
         }
 

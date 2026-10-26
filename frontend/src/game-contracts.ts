@@ -1,5 +1,5 @@
 export interface GameContext {
-    matchId: string;
+    matchId?: string;
     gameType: string;
     currentUser: {
         id: string;
