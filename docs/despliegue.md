@@ -42,3 +42,54 @@ Solo la API se conecta a MySQL: la base de datos no se expone al navegador.
 ## Configuración por entorno
 
 Las variables de la API están en el README, en la sección «Configuración fuera de Development». El frontend solo necesita `TYPING_API_URL` al compilar.
+
+## Opciones de hosting
+
+Las condiciones se revisaron el 26 de octubre de 2026 en las páginas oficiales (ver [Fuentes](#fuentes)). Cambian con frecuencia, así que hay que confirmarlas antes de crear las cuentas.
+
+Criterios: costo para el equipo, soporte de WebSockets, MySQL administrado, HTTPS incluido, si el servicio se apaga cuando no hay uso y si acepta la imagen de Docker de la API.
+
+| | A. Render + Aiven + GitHub Pages | B. Azure for Students | C. Una VM con Docker Compose |
+|---|---|---|---|
+| API | Render, plan gratuito, con la imagen de Docker | App Service Linux (plan B1) con la imagen de Docker | Contenedor `api` del compose |
+| MySQL | Aiven, plan gratuito | Azure Database for MySQL (Flexible Server) | Contenedor `mysql` del compose |
+| Frontend | GitHub Pages o Netlify | GitHub Pages o Azure Static Web Apps | Contenedor `frontend` del compose |
+| Costo | USD 0 | Se descuenta del crédito de USD 100 por 12 meses, sin tarjeta | Horas de VM pequeña incluidas en Azure for Students |
+| WebSockets | Sí | Sí. En el plan gratuito F1, máximo 5 conexiones | Sí |
+| HTTPS | Incluido | Incluido (`*.azurewebsites.net`) | Lo configura el equipo: dominio y certificado |
+| ¿Se apaga sin uso? | Sí. La API se duerme tras 15 minutos sin peticiones HTTP ni mensajes WebSocket y tarda cerca de 1 minuto en despertar | No (plan B1) | No |
+| Límites | API: 512 MB de RAM y 0,1 CPU. MySQL: 1 GB de disco, una base gratuita por organización; Aiven puede apagarla si no se usa, avisando antes | El crédito se agota según el consumo mensual de App Service y MySQL | 1 GB de RAM para MySQL, la API y nginx juntos |
+| Trabajo de administración | Bajo | Bajo | Alto: servidor, actualizaciones, certificados y respaldos |
+
+Consecuencias para Typing:
+
+- **A.** Cuando la API se duerme, se pierden las partidas en curso. Eso solo pasa después de 15 minutos sin tráfico, así que no afecta una partida activa. Antes de una demostración hay que abrir `/health` para despertar la API.
+- **B.** El plan gratuito F1 no sirve para el juego, porque con 5 conexiones WebSocket solo caben unas pocas partidas a la vez. Con B1, el crédito alcanza solo algunos meses, así que hay que calcular el costo en la calculadora de precios de Azure antes de crear los recursos. El crédito es personal, de la cuenta de un estudiante.
+- **C.** Reproduce exactamente el entorno local, pero agrega trabajo de operación que no forma parte del curso.
+
+## Decisión
+
+**Estado: propuesta, pendiente de confirmar con el Tech Lead y con los equipos 1, 2 y 3.** Si el Tech Lead define un hosting común para todos los equipos, esa decisión reemplaza esta propuesta.
+
+- **Propuesta: opción A.** No cuesta nada, no depende del crédito de una sola persona y usa directamente la imagen de Docker de la API. Su limitación, que la API se duerme, se resuelve despertándola antes de usarla.
+- **Alternativa: opción B**, si se necesita que la API esté siempre disponible, por ejemplo para que el profesor pruebe en cualquier momento.
+
+Dónde corre cada servicio:
+
+| Servicio | Equipo | Hosting | URL pública | Estado |
+|---|---|---|---|---|
+| API y hub de Typing | 4 | Render (propuesta) | Por definir | Pendiente |
+| Microfrontend de Typing | 4 | GitHub Pages (propuesta) | Por definir | Pendiente |
+| MySQL de Typing | 4 | Aiven (propuesta) | No aplica: solo la API se conecta | Pendiente |
+| Shell | 3 | Por confirmar con el Equipo 3 | Por definir | Pendiente |
+| Matchmaking | 2 | Por confirmar con el Equipo 2 | Por definir | Pendiente |
+| Profile | 1 | Por confirmar con el Equipo 1 | Por definir | Pendiente |
+| Auth0 | 1 | Tenant actual del Equipo 1 | Ya existe | Falta registrar las URLs públicas del Shell |
+
+Las URLs públicas se completan cuando se haga el despliegue.
+
+## Fuentes
+
+- Render: [Deploy for Free](https://render.com/docs/free) y [servicios gratuitos activos con mensajes WebSocket](https://render.com/changelog/free-web-services-now-remain-active-while-receiving-websocket-messages)
+- Aiven: [MySQL free tier](https://aiven.io/docs/products/mysql/concepts/mysql-free-tier)
+- Microsoft: [Azure for Students](https://azure.microsoft.com/en-us/free/students), [Azure Database for MySQL con una cuenta gratuita](https://learn.microsoft.com/azure/mysql/flexible-server/how-to-deploy-on-azure-free-account) y [WebSockets en planes Free de App Service](https://learn.microsoft.com/en-us/answers/questions/1358483/cant-connect-to-free-webapp-on-azure-through-webso)
