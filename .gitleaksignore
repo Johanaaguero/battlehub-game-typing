@@ -1,0 +1,8 @@
+# Hallazgos de gitleaks revisados y aceptados como falsos positivos (detalle en docs/seguridad.md).
+# Cada línea es la huella (fingerprint) de un hallazgo: commit:archivo:regla:línea.
+
+# Client ID del cliente M2M de Auth0 en scripts/Start-Integration.ps1: es un identificador público, no un secreto.
+# El Client Secret no está en el repo: el script lo pide con Read-Host al ejecutarse.
+e7ff5447853e15dc14982ca9b9783db1a5e5048a:scripts/Start-Integration.ps1:generic-api-key:30
+# Mismo valor en un stash local de GitHub Desktop (no está en GitHub); solo aparece al revisar con --all.
+cb83cd052c6530fed7c9568667d97978b5b68a5d:scripts/Start-Integration.ps1:generic-api-key:30
