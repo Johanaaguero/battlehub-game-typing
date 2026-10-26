@@ -2,9 +2,11 @@ using TypingBattle.Api.Results;
 
 namespace TypingBattle.Api.Persistence;
 
-/// <summary>Una partida jugada. La clave es <see cref="MatchId"/>: solo hay un resultado por partida.</summary>
+/// <summary>Una partida jugada. Id es la clave primaria interna y MatchId identifica de forma única la partida.</summary>
 public sealed class GameResultEntity
 {
+    public Guid Id { get; set; } = Guid.NewGuid();
+
     public string MatchId { get; set; } = "";
     public string GameType { get; set; } = ResultValidator.GameType;
 

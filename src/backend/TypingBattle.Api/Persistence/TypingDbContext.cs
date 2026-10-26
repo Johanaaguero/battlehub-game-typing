@@ -31,7 +31,13 @@ public sealed class TypingDbContext(DbContextOptions<TypingDbContext> options) :
         modelBuilder.Entity<GameResultEntity>(entity =>
         {
             entity.ToTable("game_results");
-            entity.HasKey(e => e.MatchId);
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Id)
+                .HasColumnType("char(36)")
+                .ValueGeneratedNever();
+
+            entity.HasAlternateKey(e => e.MatchId);
             entity.Property(e => e.MatchId).HasMaxLength(ResultValidator.MaxIdLength).ForMySQLHasCharset("utf8mb4").ForMySQLHasCollation(BinaryCollation);
             entity.Property(e => e.GameType).HasMaxLength(20).IsRequired();
             entity.Property(e => e.StartedAt).HasConversion(utcConverter);
@@ -43,6 +49,7 @@ public sealed class TypingDbContext(DbContextOptions<TypingDbContext> options) :
             entity.HasMany(e => e.Players)
                 .WithOne()
                 .HasForeignKey(p => p.MatchId)
+                .HasPrincipalKey(g => g.MatchId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

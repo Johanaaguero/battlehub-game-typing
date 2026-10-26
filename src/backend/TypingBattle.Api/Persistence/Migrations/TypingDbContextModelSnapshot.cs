@@ -21,11 +21,8 @@ namespace TypingBattle.Api.Persistence.Migrations
 
             modelBuilder.Entity("TypingBattle.Api.Persistence.GameResultEntity", b =>
                 {
-                    b.Property<string>("MatchId")
-                        .HasMaxLength(200)
-                        .HasColumnType("varchar(200)")
-                        .HasAnnotation("MySQL:Charset", "utf8mb4")
-                        .HasAnnotation("MySQL:Collation", "utf8mb4_bin");
+                    b.Property<Guid>("Id")
+                        .HasColumnType("char(36)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
@@ -37,6 +34,13 @@ namespace TypingBattle.Api.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("varchar(20)");
+
+                    b.Property<string>("MatchId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)")
+                        .HasAnnotation("MySQL:Charset", "utf8mb4")
+                        .HasAnnotation("MySQL:Collation", "utf8mb4_bin");
 
                     b.Property<string>("MetadataJson")
                         .IsRequired()
@@ -54,7 +58,7 @@ namespace TypingBattle.Api.Persistence.Migrations
                         .HasAnnotation("MySQL:Charset", "utf8mb4")
                         .HasAnnotation("MySQL:Collation", "utf8mb4_bin");
 
-                    b.HasKey("MatchId");
+                    b.HasKey("Id");
 
                     b.HasIndex("FinishedAt");
 
@@ -113,6 +117,7 @@ namespace TypingBattle.Api.Persistence.Migrations
                     b.HasOne("TypingBattle.Api.Persistence.GameResultEntity", null)
                         .WithMany("Players")
                         .HasForeignKey("MatchId")
+                        .HasPrincipalKey("MatchId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
