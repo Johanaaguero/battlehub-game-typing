@@ -1,10 +1,11 @@
-# MySQL local para desarrollo y pruebas de integración de Typing Battle (ADR-005).
-# Las credenciales se leen de .env (plantilla: .env.example). Sin .env se usan los valores de desarrollo,
+# Typing Battle en local: MySQL (ADR-005) y la API de Typing.
+# La configuración se lee de .env (plantilla: .env.example). Sin .env se usan los valores de desarrollo,
 # que coinciden con appsettings.Development.json y con el valor por defecto de las pruebas de integración
 # (TYPING_TEST_MYSQL).
 #
-#   docker compose up -d mysql
-#   docker compose down        (agregar -v para borrar también los datos)
+#   docker compose up -d --build     todo (la API reemplaza a dotnet run en el puerto 5015)
+#   docker compose up -d mysql       solo MySQL, para correr la API con dotnet run o las pruebas
+#   docker compose down              (agregar -v para borrar también los datos)
 
 services:
   mysql:
@@ -25,6 +26,33 @@ services:
       interval: 5s
       timeout: 5s
       retries: 20
+
+  api:
+    build:
+      context: .
+      dockerfile: src/backend/TypingBattle.Api/Dockerfile
+    image: typing-battle-api:local
+    container_name: typing-battle-api
+    # La API aplica las migraciones al arrancar: necesita MySQL listo, no solo iniciado.
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      ConnectionStrings__Typing: Server=mysql;Port=3306;Database=${MYSQL_DATABASE:-typing_battle};User ID=${MYSQL_USER:-typing};Password=${MYSQL_PASSWORD:-typing_dev}
+      Database__MigrateOnStartup: "true"
+      Cors__AllowedOrigins__0: ${CORS_SHELL_ORIGIN:-http://localhost:4000}
+      Cors__AllowedOrigins__1: ${CORS_FRONTEND_ORIGIN:-http://localhost:4001}
+      Auth__Domain: ${AUTH_DOMAIN:-dev-jaii1peslxnejq0y.us.auth0.com}
+      Auth__Audience: ${AUTH_AUDIENCE:-https://api.battlehub.local/typing}
+      Auth__RequiredPermission: ${AUTH_REQUIRED_PERMISSION:-}
+      # Aviso de fin de partida (ADR-004): inactivo mientras MATCHMAKING_BASE_URL esté vacío.
+      Matchmaking__BaseUrl: ${MATCHMAKING_BASE_URL:-}
+      Matchmaking__Auth0__Domain: ${MATCHMAKING_AUTH0_DOMAIN:-dev-jaii1peslxnejq0y.us.auth0.com}
+      Matchmaking__Auth0__Audience: ${MATCHMAKING_AUTH0_AUDIENCE:-https://api.battlehub.local/profile}
+      Matchmaking__Auth0__ClientId: ${MATCHMAKING_AUTH0_CLIENT_ID:-}
+      Matchmaking__Auth0__ClientSecret: ${MATCHMAKING_AUTH0_CLIENT_SECRET:-}
+    ports:
+      - "5015:8080"
 
 volumes:
   typing-mysql-data:
