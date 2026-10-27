@@ -54,7 +54,7 @@ Requisitos: el [SDK de .NET 10](https://dotnet.microsoft.com/download) y un MySQ
 docker compose up -d mysql
 ```
 
-Eso levanta MySQL 8.4 en `localhost:3306` con la base `typing_battle` y el usuario `typing` / `typing_dev` (credenciales solo de desarrollo, ya configuradas en `appsettings.Development.json`). Si prefieren un MySQL instalado en su máquina, creen esa base y ese usuario, o cambien `ConnectionStrings:Typing`.
+Eso levanta MySQL 8.4 en `localhost:3306` con la base `typing_battle` y el usuario `typing` / `typing_dev` (credenciales solo de desarrollo, ya configuradas en `appsettings.Development.json`). Para cambiarlas, ver [Variables de `.env`](#variables-de-env). Si prefieren un MySQL instalado en su máquina, creen esa base y ese usuario, o cambien `ConnectionStrings:Typing`.
 
 ```bash
 dotnet run --project src/backend/TypingBattle.Api
@@ -81,6 +81,27 @@ La API completa, con ejemplos, está en [`docs/api-resultados.md`](docs/api-resu
 - En el hub, el token viaja en `?access_token=` (un WebSocket del navegador no puede mandar encabezados), igual que en el lobby de Matchmaking. Solo se acepta ahí.
 - El hub ignora el `currentUser` que diga el cliente si no coincide con el token, y solo los jugadores de la partida pueden enviar métricas o terminarla.
 - `POST /results` exige el permiso `games.typing.results.write` (`Auth:ResultsWritePermission`): según el contrato, el resultado lo registra el backend del juego, no el navegador.
+
+### Variables de `.env`
+
+Docker Compose lee las credenciales de un archivo `.env` en la raíz del repo, que no se versiona. Sin `.env` usa los valores de desarrollo, así que solo hace falta para cambiar alguno. La plantilla es `.env.example`:
+
+```bash
+cp .env.example .env
+```
+
+| Variable | Valor de desarrollo | Para qué |
+|---|---|---|
+| `MYSQL_ROOT_PASSWORD` | `typing_root` | Contraseña de `root`. La usan las pruebas de integración |
+| `MYSQL_DATABASE` | `typing_battle` | Base de datos de la API |
+| `MYSQL_USER` | `typing` | Usuario con el que se conecta la API |
+| `MYSQL_PASSWORD` | `typing_dev` | Contraseña de ese usuario |
+
+Al cambiar estos valores:
+
+- MySQL los aplica una sola vez, al crear el volumen de datos. Para que tomen efecto hay que borrar los datos con `docker compose down -v` y volver a levantarlo.
+- Si cambian `MYSQL_ROOT_PASSWORD`, las pruebas de integración necesitan `TYPING_TEST_MYSQL` con la contraseña nueva (ver [Pruebas](#pruebas)).
+- Si cambian `MYSQL_DATABASE`, `MYSQL_USER` o `MYSQL_PASSWORD`, `dotnet run` necesita la variable `ConnectionStrings__Typing` con los valores nuevos, porque `appsettings.Development.json` trae los de desarrollo.
 
 ### Configuración fuera de Development
 
