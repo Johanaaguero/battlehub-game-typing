@@ -21,4 +21,7 @@ WORKDIR /app
 # La imagen base escucha en el puerto 8080 (ASPNETCORE_HTTP_PORTS).
 EXPOSE 8080
 COPY --from=build /app/publish .
+# Usuario sin privilegios que trae la imagen base (APP_UID): si alguien llegara a explotar la API,
+# no tendría permisos de root dentro del contenedor.
+USER $APP_UID
 ENTRYPOINT ["dotnet", "TypingBattle.Api.dll"]
