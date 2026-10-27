@@ -82,27 +82,6 @@ La API completa, con ejemplos, está en [`docs/api-resultados.md`](docs/api-resu
 - El hub ignora el `currentUser` que diga el cliente si no coincide con el token, y solo los jugadores de la partida pueden enviar métricas o terminarla.
 - `POST /results` exige el permiso `games.typing.results.write` (`Auth:ResultsWritePermission`): según el contrato, el resultado lo registra el backend del juego, no el navegador.
 
-### Variables de `.env`
-
-Docker Compose lee las credenciales de un archivo `.env` en la raíz del repo, que no se versiona. Sin `.env` usa los valores de desarrollo, así que solo hace falta para cambiar alguno. La plantilla es `.env.example`:
-
-```bash
-cp .env.example .env
-```
-
-| Variable | Valor de desarrollo | Para qué |
-|---|---|---|
-| `MYSQL_ROOT_PASSWORD` | `typing_root` | Contraseña de `root`. La usan las pruebas de integración |
-| `MYSQL_DATABASE` | `typing_battle` | Base de datos de la API |
-| `MYSQL_USER` | `typing` | Usuario con el que se conecta la API |
-| `MYSQL_PASSWORD` | `typing_dev` | Contraseña de ese usuario |
-
-Al cambiar estos valores:
-
-- MySQL los aplica una sola vez, al crear el volumen de datos. Para que tomen efecto hay que borrar los datos con `docker compose down -v` y volver a levantarlo.
-- Si cambian `MYSQL_ROOT_PASSWORD`, las pruebas de integración necesitan `TYPING_TEST_MYSQL` con la contraseña nueva (ver [Pruebas](#pruebas)).
-- Si cambian `MYSQL_DATABASE`, `MYSQL_USER` o `MYSQL_PASSWORD`, `dotnet run` necesita la variable `ConnectionStrings__Typing` con los valores nuevos, porque `appsettings.Development.json` trae los de desarrollo.
-
 ### Configuración fuera de Development
 
 | Variable de entorno | Para qué |
@@ -183,6 +162,61 @@ npm run build
 - **Credenciales.** Si el Shell agrega al contexto la función opcional `getAccessToken()`, el juego manda ese token de Auth0 a la API y al hub. Si no, manda la identidad de desarrollo (`currentUser` del contexto), que la API solo acepta con `Auth:Mode=Development`.
 - **Estilos.** Todas las clases llevan el prefijo `typing-game` y las variables CSS se definen en la raíz del juego (`.typing-game`), así que no alteran el layout del Shell (ADR-003 §8).
 
+## Todo con Docker Compose
+
+Para levantar MySQL, la API y el microfrontend solo con Docker, sin instalar .NET ni Node:
+
+```bash
+docker compose up -d --build
+```
+
+| Servicio | Contenedor | URL local |
+|---|---|---|
+| `mysql` | `typing-battle-mysql` | `localhost:3306` |
+| `api` | `typing-battle-api` | `http://localhost:5015` (`/health`, `/api/games/typing`, `/hubs/typing`) |
+| `frontend` | `typing-battle-frontend` | `http://localhost:4001/remoteEntry.js` |
+
+- **Mismos puertos que `dotnet run` y `npm start`:** el Shell carga el juego sin cambiar nada, pero no se pueden correr a la vez que esos comandos.
+- **La API corre en Production con Auth0:** aplica las migraciones al arrancar y no acepta la identidad de desarrollo, así que hace falta el Shell con Auth0, no su sesión simulada.
+- **El aviso de fin de partida a Matchmaking** queda inactivo hasta configurarlo en `.env` (ver la tabla).
+- `docker compose up -d mysql` sigue levantando solo MySQL, para usar `dotnet run` o correr las pruebas.
+
+```bash
+docker compose logs -f api
+```
+
+```bash
+docker compose down
+```
+
+### Variables de `.env`
+
+Docker Compose lee la configuración de un archivo `.env` en la raíz del repo, que no se versiona. Una variable que falta o está vacía toma el valor de desarrollo, así que `.env` solo hace falta para cambiar algún valor o para poner un secreto. La plantilla es `.env.example`:
+
+```bash
+cp .env.example .env
+```
+
+| Variable | Valor de desarrollo | Para qué |
+|---|---|---|
+| `MYSQL_ROOT_PASSWORD` | `typing_root` | Contraseña de `root`. La usan las pruebas de integración |
+| `MYSQL_DATABASE` | `typing_battle` | Base de datos de la API |
+| `MYSQL_USER` | `typing` | Usuario con el que se conecta la API |
+| `MYSQL_PASSWORD` | `typing_dev` | Contraseña de ese usuario |
+| `AUTH_DOMAIN`, `AUTH_AUDIENCE` | Tenant de desarrollo de BattleHub y `https://api.battlehub.local/typing` | Auth0 de la API |
+| `AUTH_REQUIRED_PERMISSION` | Vacío | Permiso para jugar, por ejemplo `games.typing.play`. Vacío: basta con estar autenticado |
+| `CORS_SHELL_ORIGIN`, `CORS_FRONTEND_ORIGIN` | `http://localhost:4000` y `http://localhost:4001` | Orígenes del navegador que pueden llamar a la API |
+| `MATCHMAKING_BASE_URL` | Vacío: no se avisa | URL de Matchmaking para el aviso de fin de partida. Desde el contenedor, tu máquina es `host.docker.internal`: `http://host.docker.internal:5211` |
+| `MATCHMAKING_AUTH0_DOMAIN`, `MATCHMAKING_AUTH0_AUDIENCE` | Los de `scripts/Start-Integration.ps1` | Cliente M2M de Auth0 con el permiso `matches.finish` |
+| `MATCHMAKING_AUTH0_CLIENT_ID`, `MATCHMAKING_AUTH0_CLIENT_SECRET` | Vacíos | Credenciales de ese cliente. El Client ID está en `appsettings.Development.json`; el Client Secret es un secreto y solo va en `.env` |
+| `TYPING_API_URL` | `http://localhost:5015` | URL de la API que usa el frontend. Queda fija al construir la imagen: al cambiarla, `docker compose up -d --build frontend` |
+
+Al cambiar las variables de MySQL:
+
+- MySQL las aplica una sola vez, al crear el volumen de datos. Para que tomen efecto hay que borrar los datos con `docker compose down -v` y volver a levantarlo.
+- Si cambian `MYSQL_ROOT_PASSWORD`, las pruebas de integración necesitan `TYPING_TEST_MYSQL` con la contraseña nueva (ver [Pruebas](#pruebas)).
+- Si cambian `MYSQL_DATABASE`, `MYSQL_USER` o `MYSQL_PASSWORD`, `dotnet run` necesita la variable `ConnectionStrings__Typing` con los valores nuevos, porque `appsettings.Development.json` trae los de desarrollo.
+
 ## Integración con los otros equipos
 
 Puertos locales del proyecto:
@@ -201,7 +235,7 @@ Puertos locales del proyecto:
 "typing": { "scope": "typingGame", "url": "http://localhost:4001/remoteEntry.js", "module": "./GameModule" }
 ```
 
-Para probarlo juntos: MySQL (`docker compose up -d mysql`), la API (`dotnet run --project src/backend/TypingBattle.Api`), el remote (`npm start` en `frontend/`) y el Shell (`npm start` en su repo). La API ya permite los orígenes `http://localhost:4000` y `http://localhost:4001`. Mientras el Shell use su sesión simulada, la API en Development acepta la identidad de desarrollo que envía el juego. Con Auth0 real, el Shell debe agregar `getAccessToken()` al contexto del juego.
+Para probarlo juntos: MySQL (`docker compose up -d mysql`), la API (`dotnet run --project src/backend/TypingBattle.Api`), el remote (`npm start` en `frontend/`) y el Shell (`npm start` en su repo). Las tres primeras también se pueden levantar juntas con `docker compose up -d --build` (ver [Todo con Docker Compose](#todo-con-docker-compose)). La API ya permite los orígenes `http://localhost:4000` y `http://localhost:4001`. Mientras el Shell use su sesión simulada, la API en Development acepta la identidad de desarrollo que envía el juego. Con Auth0 real, el Shell debe agregar `getAccessToken()` al contexto del juego.
 
 **Matchmaking (Equipo 2).** Al guardar el resultado, el backend avisa el fin de la partida con `POST /api/matches/{matchId}/finish` (ADR-004). Queda inactivo hasta configurar `Matchmaking__BaseUrl`; el detalle está en [`docs/api-typing-hub.md`](docs/api-typing-hub.md).
 
