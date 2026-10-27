@@ -1,0 +1,31 @@
+# Contexto de build de la imagen del microfrontend (carpeta frontend/):
+#   docker build frontend
+# Las dependencias se instalan con npm ci dentro de la imagen, así que no se copia node_modules.
+# A la imagen solo debe llegar lo que usa el build: src, la configuración de Webpack y TypeScript, y package*.json.
+
+# Secretos y configuración local
+.env
+.env.*
+.npmrc
+*.pem
+*.key
+
+# Dependencias y resultados locales
+node_modules
+dist
+coverage
+.nyc_output
+*.log
+
+# Pruebas, documentación y herramientas locales
+test
+*.md
+.gitignore
+.impeccable
+.vscode
+.idea
+.chrome
+
+# Docker
+Dockerfile*
+.dockerignore

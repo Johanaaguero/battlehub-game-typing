@@ -495,3 +495,12 @@ dist/
 build/
 coverage/
 npm-debug.log*
+
+# ===== Secretos y configuración local (Typing) =====
+# Claves privadas y certificados (por ejemplo, para HTTPS al desplegar)
+*.key
+*.p12
+# Docker Compose lo carga solo; es el lugar habitual para credenciales locales
+docker-compose.override.yml
+# Reportes de gitleaks: pueden contener los secretos encontrados
+gitleaks-report*
