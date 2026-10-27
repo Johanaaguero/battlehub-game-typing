@@ -29,7 +29,11 @@ Este servicio será responsable de:
 battlehub-game-typing/
 ├── .github/workflows/ci.yml           → pipeline de CI (build, pruebas unitarias y de integración con MySQL)
 ├── docs/
-│   └── api-resultados.md              → referencia de la API REST de resultados
+│   ├── api-resultados.md              → referencia de la API REST de resultados
+│   ├── api-typing-hub.md              → contrato del hub SignalR /hubs/typing
+│   ├── despliegue.md                  → servicios, dependencias y estrategia de despliegue
+│   ├── docker.md                      → guía para construir, levantar y comprobar los contenedores
+│   └── seguridad.md                   → auditoría de secretos y reglas para manejarlos
 ├── src/
 │   └── backend/
 │       └── TypingBattle.Api/
@@ -39,7 +43,7 @@ battlehub-game-typing/
 ├── tests/
 │   ├── TypingBattle.UnitTests/        → pruebas unitarias (Category=Unit)
 │   └── TypingBattle.IntegrationTests/ → pruebas de integración contra MySQL real (Category=Integration)
-├── docker-compose.yml                 → MySQL local para desarrollo y pruebas
+├── docker-compose.yml                 → MySQL, API y microfrontend en local (configuración en .env, plantilla .env.example)
 ├── dotnet-tools.json                  → herramienta local dotnet-ef
 ├── .gitignore
 ├── README.md
@@ -188,6 +192,8 @@ docker compose logs -f api
 ```bash
 docker compose down
 ```
+
+La guía completa, con las comprobaciones, cómo actualizar, cómo borrar los datos y los problemas comunes, está en [`docs/docker.md`](docs/docker.md).
 
 ### Variables de `.env`
 

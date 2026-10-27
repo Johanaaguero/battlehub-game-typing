@@ -1,9 +1,12 @@
 # CI del Equipo 4 (Typing Battle).
 # Implementa 05-cicd-testing-commits.md de battlehub-contracts: en cada PR hacia main (y en cada
-# push a main) corren dos jobs, porque el repositorio tiene la API (.NET 10) y el microfrontend (Aurelia):
+# push a main) corren tres jobs, porque el repositorio tiene la API (.NET 10), el microfrontend (Aurelia)
+# y sus imágenes de Docker:
 # - Backend: restore, build, migraciones al día, pruebas unitarias y de integración contra un MySQL 8.4
 #   real (ADR-005), levantado como servicio.
 # - Frontend: install, lint, build y pruebas, con Node 24 desde frontend/.nvmrc (ADR-003).
+# - Docker: construye las imágenes de la API y del frontend, sin publicarlas, para detectar si un cambio
+#   rompe un Dockerfile.
 #
 # No agregar filtros "paths:" a los triggers: si un check obligatorio no se ejecuta,
 # el PR queda esperándolo indefinidamente.
@@ -95,3 +98,17 @@ jobs:
 
       - name: Unit tests
         run: npx jest --ci
+
+  docker:
+    name: Docker (imágenes)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Los mismos comandos de la documentación; los runners de GitHub ya traen Docker.
+      - name: Imagen de la API
+        run: docker build -f src/backend/TypingBattle.Api/Dockerfile -t typing-battle-api:ci .
+
+      - name: Imagen del frontend
+        run: docker build -t typing-battle-frontend:ci frontend
