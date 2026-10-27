@@ -1,9 +1,9 @@
-# Typing Battle en local: MySQL (ADR-005) y la API de Typing.
+# Typing Battle en local: MySQL (ADR-005), la API y el microfrontend de Typing.
 # La configuración se lee de .env (plantilla: .env.example). Sin .env se usan los valores de desarrollo,
 # que coinciden con appsettings.Development.json y con el valor por defecto de las pruebas de integración
 # (TYPING_TEST_MYSQL).
 #
-#   docker compose up -d --build     todo (la API reemplaza a dotnet run en el puerto 5015)
+#   docker compose up -d --build     todo (reemplaza a dotnet run en el puerto 5015 y a npm start en el 4001)
 #   docker compose up -d mysql       solo MySQL, para correr la API con dotnet run o las pruebas
 #   docker compose down              (agregar -v para borrar también los datos)
 
@@ -53,6 +53,18 @@ services:
       Matchmaking__Auth0__ClientSecret: ${MATCHMAKING_AUTH0_CLIENT_SECRET:-}
     ports:
       - "5015:8080"
+
+  frontend:
+    build:
+      context: frontend
+      args:
+        # URL de la API tal como la usa el navegador. Queda fija al construir la imagen.
+        TYPING_API_URL: ${TYPING_API_URL:-http://localhost:5015}
+    image: typing-battle-frontend:local
+    container_name: typing-battle-frontend
+    # Sin depends_on: son archivos estáticos y es el navegador el que llama a la API.
+    ports:
+      - "4001:8080"
 
 volumes:
   typing-mysql-data:
