@@ -43,6 +43,30 @@ Solo la API se conecta a MySQL: la base de datos no se expone al navegador.
 
 Las variables de la API están en el README, en la sección «Configuración fuera de Development». El frontend solo necesita `TYPING_API_URL` al compilar.
 
+## ¿El microfrontend necesita su propia imagen?
+
+El remote compila a archivos estáticos (`remoteEntry.js`, los chunks e `index.html`), así que no necesita un servidor de aplicación. La imagen de `frontend/Dockerfile` se usa en dos casos:
+
+- **En local, con Docker Compose:** levanta el remote junto con la API y MySQL sin instalar Node, en el mismo puerto 4001 que espera el Shell.
+- **En un hosting de contenedores:** cuando el frontend se despliega en el mismo lugar que la API, como en la opción C.
+
+En un hosting estático, que es la opción propuesta, la imagen no se usa: se publica la carpeta `dist/` que genera `npm run build`. En los dos casos, `TYPING_API_URL` se fija al compilar, así que hace falta un build o una imagen por cada URL de la API:
+
+```bash
+docker build --build-arg TYPING_API_URL=https://typing.mi-dominio.com -t typing-battle-frontend frontend
+```
+
+La imagen sirve los archivos con nginx sin root (`frontend/nginx.conf`) y aplica estas reglas, que también hay que revisar al elegir un hosting estático:
+
+| Regla | Por qué |
+|---|---|
+| `Access-Control-Allow-Origin: *` | El Shell descarga `remoteEntry.js` y los chunks desde otro origen. Son archivos públicos y no usan cookies |
+| `remoteEntry.js` e `index.html` con `Cache-Control: no-cache` | No llevan hash en el nombre: así el Shell recibe la versión nueva después de cada despliegue |
+| Chunks con hash en caché por un año (`immutable`) | Su nombre cambia cuando cambia el contenido |
+| Un archivo que no existe devuelve 404 | Si falta un chunk, el error es claro, en lugar de recibir `index.html` como si fuera JavaScript |
+
+Netlify, por ejemplo, permite configurar estos encabezados con un archivo `_headers`; GitHub Pages no permite encabezados propios.
+
 ## Opciones de hosting
 
 Las condiciones se revisaron el 26 de octubre de 2026 en las páginas oficiales (ver [Fuentes](#fuentes)). Cambian con frecuencia, así que hay que confirmarlas antes de crear las cuentas.
