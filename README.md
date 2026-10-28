@@ -35,11 +35,12 @@ battlehub-game-typing/
 │   ├── docker.md                      → guía para construir, levantar y comprobar los contenedores
 │   └── seguridad.md                   → auditoría de secretos y reglas para manejarlos
 ├── src/
-│   └── backend/
-│       └── TypingBattle.Api/
-│           ├── Common/                → utilidades (fechas UTC)
-│           ├── Persistence/           → DbContext MySQL, entidades y Migrations/
-│           └── Results/               → validación, servicio y endpoints de resultados, historial y estadísticas
+│   ├── backend/
+│   │   └── TypingBattle.Api/
+│   │       ├── Common/                → utilidades (fechas UTC)
+│   │       ├── Persistence/           → DbContext MySQL, entidades y Migrations/
+│   │       └── Results/               → validación, servicio y endpoints de resultados, historial y estadísticas
+│   └── frontend/                      → microfrontend de Typing (Aurelia 2 y Module Federation), con su Dockerfile y nginx.conf
 ├── tests/
 │   ├── TypingBattle.UnitTests/        → pruebas unitarias (Category=Unit)
 │   └── TypingBattle.IntegrationTests/ → pruebas de integración contra MySQL real (Category=Integration)
@@ -133,7 +134,7 @@ El hub `/hubs/typing` corre en el mismo proceso y guarda el resultado al termina
 
 ## Frontend: cómo correrlo localmente
 
-Requisitos: Node 24 LTS (`frontend/.nvmrc`, ADR-003). Desde `frontend/`:
+Requisitos: Node 24 LTS (`src/frontend/.nvmrc`, ADR-003). Desde `src/frontend/`:
 
 ```bash
 npm ci
@@ -229,13 +230,13 @@ Puertos locales del proyecto:
 "typing": { "scope": "typingGame", "url": "http://localhost:4001/remoteEntry.js", "module": "./GameModule" }
 ```
 
-Para probarlo juntos: MySQL (`docker compose up -d mysql`), la API (`dotnet run --project src/backend/TypingBattle.Api`), el remote (`npm start` en `frontend/`) y el Shell (`npm start` en su repo). Las tres primeras también se pueden levantar juntas con `docker compose up -d --build` (ver [Todo con Docker Compose](#todo-con-docker-compose)). La API ya permite los orígenes `http://localhost:4000` y `http://localhost:4001`.
+Para probarlo juntos: MySQL (`docker compose up -d mysql`), la API (`dotnet run --project src/backend/TypingBattle.Api`), el remote (`npm start` en `src/frontend/`) y el Shell (`npm start` en su repo). Las tres primeras también se pueden levantar juntas con `docker compose up -d --build` (ver [Todo con Docker Compose](#todo-con-docker-compose)). La API ya permite los orígenes `http://localhost:4000` y `http://localhost:4001`.
 
 **Matchmaking (Equipo 2).** Typing no llama a Matchmaking (R-46). Al terminar la partida, el juego avisa al Shell con un evento y el Shell notifica a Matchmaking; la API solo guarda el resultado en MySQL.
 
 #### Evento de fin de partida
 
-El microfrontend emite en `window` un `CustomEvent` llamado `battlehub:game-finished` cuando el servidor cierra una partida real (el contrato está en `frontend/src/game-contracts.ts`). El Shell lo escucha y notifica a Matchmaking:
+El microfrontend emite en `window` un `CustomEvent` llamado `battlehub:game-finished` cuando el servidor cierra una partida real (el contrato está en `src/frontend/src/game-contracts.ts`). El Shell lo escucha y notifica a Matchmaking:
 
 ```ts
 window.addEventListener('battlehub:game-finished', (event) => {

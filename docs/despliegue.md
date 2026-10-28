@@ -45,7 +45,7 @@ Las variables de la API están en el README, en la sección «Configuración fue
 
 ## ¿El microfrontend necesita su propia imagen?
 
-El remote compila a archivos estáticos (`remoteEntry.js`, los chunks e `index.html`), así que no necesita un servidor de aplicación. La imagen de `frontend/Dockerfile` se usa en dos casos:
+El remote compila a archivos estáticos (`remoteEntry.js`, los chunks e `index.html`), así que no necesita un servidor de aplicación. La imagen de `src/frontend/Dockerfile` se usa en dos casos:
 
 - **En local, con Docker Compose:** levanta el remote junto con la API y MySQL sin instalar Node, en el mismo puerto 4001 que espera el Shell.
 - **En un hosting de contenedores:** cuando el frontend se despliega en el mismo lugar que la API, como en la opción C.
@@ -53,10 +53,10 @@ El remote compila a archivos estáticos (`remoteEntry.js`, los chunks e `index.h
 En un hosting estático, que es la opción propuesta, la imagen no se usa: se publica la carpeta `dist/` que genera `npm run build`. En los dos casos, `TYPING_API_URL` se fija al compilar, así que hace falta un build o una imagen por cada URL de la API:
 
 ```bash
-docker build --build-arg TYPING_API_URL=https://typing.mi-dominio.com -t typing-battle-frontend frontend
+docker build --build-arg TYPING_API_URL=https://typing.mi-dominio.com -t typing-battle-frontend src/frontend
 ```
 
-La imagen sirve los archivos con nginx sin root (`frontend/nginx.conf`) y aplica estas reglas, que también hay que revisar al elegir un hosting estático:
+La imagen sirve los archivos con nginx sin root (`src/frontend/nginx.conf`) y aplica estas reglas, que también hay que revisar al elegir un hosting estático:
 
 | Regla | Por qué |
 |---|---|

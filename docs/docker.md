@@ -8,7 +8,7 @@ Cómo construir, levantar y comprobar MySQL, la API y el microfrontend de Typing
 |---|---|---|---|
 | `mysql` | `typing-battle-mysql` | `localhost:3306` | `mysql:8.4` |
 | `api` | `typing-battle-api` | `http://localhost:5015` | `src/backend/TypingBattle.Api/Dockerfile` |
-| `frontend` | `typing-battle-frontend` | `http://localhost:4001/remoteEntry.js` | `frontend/Dockerfile` |
+| `frontend` | `typing-battle-frontend` | `http://localhost:4001/remoteEntry.js` | `src/frontend/Dockerfile` |
 
 ## 1. Preparar `.env` (opcional)
 
@@ -102,7 +102,7 @@ docker build -f src/backend/TypingBattle.Api/Dockerfile -t typing-battle-api .
 ```
 
 ```powershell
-docker build --build-arg TYPING_API_URL=https://typing.mi-dominio.com -t typing-battle-frontend frontend
+docker build --build-arg TYPING_API_URL=https://typing.mi-dominio.com -t typing-battle-frontend src/frontend
 ```
 
 La imagen de la API no lleva configuración: al ejecutarla hay que pasar al menos `ConnectionStrings__Typing` (lista completa en el README, en «Configuración fuera de Development»). Las dos imágenes corren sin root: la API como el usuario `app` y nginx como `nginx`.

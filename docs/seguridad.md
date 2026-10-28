@@ -43,8 +43,8 @@ Solo sirven para bases de datos locales o del CI, que no se exponen fuera de la 
 
 - **Variables de entorno.** El único secreto de la API, `ConnectionStrings__Typing`, solo se configura como variable de entorno; la lista completa está en el README, en «Configuración fuera de Development».
 - **`.gitignore`.** Ignora `.env` y `.env.*` (salvo `.env.example`), `appsettings.Local.json`, claves y certificados (`*.pem`, `*.pfx`, `*.key`, `*.p12`), `docker-compose.override.yml` y los reportes de gitleaks.
-- **`.dockerignore` de la raíz** (imagen de la API). Solo entran el código de `TypingBattle.Api`, sus `appsettings` y la solución. Quedan fuera los secretos, `.git`, el CI, `bin`/`obj`, `frontend`, `tests`, `docs` y `scripts`.
-- **`frontend/.dockerignore`** (imagen del microfrontend). Solo entran `src`, la configuración de Webpack y TypeScript y los `package*.json`. Quedan fuera `node_modules`, `dist`, las pruebas, `.env` y `.npmrc`.
+- **`.dockerignore` de la raíz** (imagen de la API). Solo entran el código de `TypingBattle.Api`, sus `appsettings` y la solución. Quedan fuera los secretos, `.git`, el CI, `bin`/`obj`, `src/frontend`, `tests`, `docs` y `scripts`.
+- **`src/frontend/.dockerignore`** (imagen del microfrontend). Solo entran `src`, la configuración de Webpack y TypeScript y los `package*.json`. Quedan fuera `node_modules`, `dist`, las pruebas, `.env` y `.npmrc`.
 - **`appsettings.Development.json`** entra en la imagen de la API, pero no tiene secretos y solo se carga con `ASPNETCORE_ENVIRONMENT=Development`.
 
 ## Cómo repetir la auditoría
