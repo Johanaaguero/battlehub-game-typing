@@ -105,7 +105,7 @@ docker build -f src/backend/TypingBattle.Api/Dockerfile -t typing-battle-api .
 docker build --build-arg TYPING_API_URL=https://typing.mi-dominio.com -t typing-battle-frontend src/frontend
 ```
 
-La imagen de la API no lleva configuración: al ejecutarla hay que pasar al menos `ConnectionStrings__Typing` (lista completa en el README, en «Configuración fuera de Development»). Las dos imágenes corren sin root: la API como el usuario `app` y nginx como `nginx`.
+La imagen de la API no lleva configuración: al ejecutarla hay que pasar al menos `ConnectionStrings__Typing` (lista completa en el README, en «Configuración (variables de entorno)»). Las dos imágenes corren sin root: la API como el usuario `app` y nginx como `nginx`.
 
 ## Problemas comunes
 

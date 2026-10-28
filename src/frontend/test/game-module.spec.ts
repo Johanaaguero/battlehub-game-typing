@@ -1,6 +1,7 @@
 import { createFixture } from '@aurelia/testing';
 import { GameModule } from '../src/game-module';
 import { GAME_FINISHED_EVENT, type GameContext, type GameFinishedDetail } from '../src/game-contracts';
+import { RESULTS_API_URL, TYPING_HUB_URL } from '../src/config';
 import { SignalRClient } from '../src/signalr-client';
 import template from '../src/game-module.html';
 
@@ -215,7 +216,7 @@ describe('GameModule (URL de la API, sin autenticación)', () => {
     await game.initialize(context);
 
     const calls = (SignalRClient as unknown as jest.Mock).mock.calls;
-    expect(calls[calls.length - 1]).toEqual(['http://localhost:5015/hubs/typing']);
+    expect(calls[calls.length - 1]).toEqual([TYPING_HUB_URL]);
   });
 
   it('consulta las estadísticas sin encabezados de autenticación', async () => {
@@ -224,7 +225,7 @@ describe('GameModule (URL de la API, sin autenticación)', () => {
     await game.loadStats();
 
     expect(fetchMock.mock.calls[0]).toEqual([
-      'http://localhost:5015/api/games/typing/players/user-ana/stats',
+      `${RESULTS_API_URL}/players/user-ana/stats`,
     ]);
   });
 
@@ -234,7 +235,7 @@ describe('GameModule (URL de la API, sin autenticación)', () => {
     await game.loadHistory();
 
     expect(fetchMock.mock.calls[0]).toEqual([
-      'http://localhost:5015/api/games/typing/players/google-oauth2%7C123/history?limit=50&offset=0',
+      `${RESULTS_API_URL}/players/google-oauth2%7C123/history?limit=50&offset=0`,
     ]);
   });
 });

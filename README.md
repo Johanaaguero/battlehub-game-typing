@@ -59,7 +59,14 @@ Requisitos: el [SDK de .NET 10](https://dotnet.microsoft.com/download) y un MySQ
 docker compose up -d mysql
 ```
 
-Eso levanta MySQL 8.4 en `localhost:3306` con la base `typing_battle` y el usuario `typing` / `typing_dev` (credenciales solo de desarrollo, ya configuradas en `appsettings.Development.json`). Para cambiarlas, ver [Variables de `.env`](#variables-de-env). Si prefieren un MySQL instalado en su máquina, creen esa base y ese usuario, o cambien `ConnectionStrings:Typing`.
+Eso levanta MySQL 8.4 en `localhost:3306` con la base `typing_battle` y el usuario `typing` / `typing_dev` (credenciales solo de desarrollo, que son los valores por defecto de `docker-compose.yml`). Para cambiarlas, ver [Variables de `.env`](#variables-de-env). Si prefieren un MySQL instalado en su máquina, creen esa base y ese usuario.
+
+El código y los `appsettings` no traen cadena de conexión ni orígenes de CORS: hay que definirlos como variables de entorno (ver [Configuración](#configuración-variables-de-entorno)). En PowerShell, con el MySQL de arriba:
+
+```powershell
+$env:ConnectionStrings__Typing = "Server=localhost;Port=3306;Database=<MYSQL_DATABASE>;User ID=<MYSQL_USER>;Password=<MYSQL_PASSWORD>"
+$env:Cors__AllowedOrigins__0 = "<origen del Shell>"
+```
 
 ```bash
 dotnet run --project src/backend/TypingBattle.Api
@@ -84,13 +91,17 @@ El juego no tiene contacto con Auth0 (R-30). El Shell inicia la sesión del usua
 - Solo los jugadores que se unieron a una partida pueden enviar métricas o terminarla.
 - Por la misma razón, nada en la API impide que alguien con acceso a la red se haga pasar por otro jugador o registre un resultado con `POST /results`. Se acepta porque la API solo se publica detrás del Shell y dentro de la red del compose; si algún día se expusiera a internet, habría que protegerla en el borde (un proxy o una puerta de enlace) y no en el juego.
 
-### Configuración fuera de Development
+### Configuración (variables de entorno)
+
+No hay valores por defecto en el código ni en los `appsettings`: todo llega por variables de entorno. Los valores de desarrollo local viven solo en `docker-compose.yml` y se documentan en `.env.example`.
 
 | Variable de entorno | Para qué |
 |---|---|
-| `ConnectionStrings__Typing` | Cadena de conexión a MySQL (obligatoria: la API no arranca sin ella) |
+| `ConnectionStrings__Typing` | Cadena de conexión a MySQL. Obligatoria: la API y `dotnet ef` no arrancan sin ella (en Docker la arma el compose) |
 | `Database__MigrateOnStartup` | `true` para aplicar las migraciones al arrancar (por defecto `false`) |
-| `Cors__AllowedOrigins__0`, `__1`… | Orígenes del Shell / microfrontend |
+| `Cors__AllowedOrigins__0`, `__1`… | Orígenes del Shell y del microfrontend que pueden llamar a la API. Sin ellos, el navegador bloquea las llamadas desde otro origen |
+| `TYPING_TEST_MYSQL` | Servidor MySQL de las pruebas de integración, sin `Database` (ver [Pruebas](#pruebas)). Obligatoria para correrlas |
+| `TYPING_API_URL` | URL de la API, fija al compilar el frontend. Obligatoria: `npm start`, `npm run build` y el build de Docker fallan sin ella |
 
 ### Migraciones
 
@@ -100,13 +111,15 @@ El esquema solo cambia con migraciones de EF Core. La herramienta `dotnet-ef` es
 dotnet tool restore
 ```
 
+Todos los comandos `dotnet ef` necesitan `ConnectionStrings__Typing` (ver [Configuración](#configuración-variables-de-entorno)). Crear una migración no se conecta a MySQL, así que basta una cadena sin credenciales; aplicarlas sí se conecta.
+
 Crear una migración después de cambiar las entidades o el `TypingDbContext`:
 
 ```bash
 dotnet ef migrations add NombreDelCambio --project src/backend/TypingBattle.Api --output-dir Persistence/Migrations
 ```
 
-Aplicarlas a la base configurada (toma `ConnectionStrings__Typing` si existe; si no, el MySQL de docker-compose):
+Aplicarlas a la base de `ConnectionStrings__Typing`:
 
 ```bash
 dotnet ef database update --project src/backend/TypingBattle.Api
@@ -126,7 +139,11 @@ dotnet test --filter "Category=Unit"
 dotnet test --filter "Category=Integration"
 ```
 
-Las de integración levantan la API completa contra MySQL real: cada clase crea su propia base `typing_test_…`, le aplica las migraciones y la borra al terminar. Usan el MySQL de docker-compose; para otro servidor, configuren `TYPING_TEST_MYSQL` con una cadena sin `Database` y un usuario que pueda crear y borrar bases (por ejemplo `Server=localhost;Port=3306;User ID=root;Password=...`).
+Las de integración levantan la API completa contra MySQL real: cada clase crea su propia base `typing_test_…`, le aplica las migraciones y la borra al terminar. Necesitan la variable `TYPING_TEST_MYSQL`, con una cadena sin `Database` y un usuario que pueda crear y borrar bases. Con el MySQL de docker compose (`docker compose up -d mysql`), en PowerShell:
+
+```powershell
+$env:TYPING_TEST_MYSQL = "Server=localhost;Port=3306;User ID=root;Password=<MYSQL_ROOT_PASSWORD>"
+```
 
 ### Uso desde el hub
 
@@ -156,7 +173,7 @@ npm run build
 
 `npm test` corre primero el lint (ESLint y Stylelint) y luego las pruebas de Jest.
 
-- **URL de la API.** Se fija al compilar con `TYPING_API_URL` (por defecto `http://localhost:5015`), por ejemplo `TYPING_API_URL=https://typing.mi-dominio.com npm run build`.
+- **URL de la API.** Se fija al compilar con la variable `TYPING_API_URL`, que es obligatoria: sin ella fallan `npm start`, `npm run build` y el build de Docker. Por ejemplo, `TYPING_API_URL=https://typing.mi-dominio.com npm run build`.
 - **Identidad.** El juego no usa tokens ni habla con Auth0: manda el `currentUser` que le entrega el Shell en el contexto (ver [Identidad del jugador](#identidad-del-jugador)).
 - **Estilos.** Todas las clases llevan el prefijo `typing-game` y las variables CSS se definen en la raíz del juego (`.typing-game`), así que no alteran el layout del Shell (ADR-003 §8).
 
@@ -191,7 +208,7 @@ La guía completa, con las comprobaciones, cómo actualizar, cómo borrar los da
 
 ### Variables de `.env`
 
-Docker Compose lee la configuración de un archivo `.env` en la raíz del repo, que no se versiona. Una variable que falta o está vacía toma el valor de desarrollo, así que `.env` solo hace falta para cambiar algún valor o para poner un secreto. La plantilla es `.env.example`:
+Docker Compose lee la configuración de un archivo `.env` en la raíz del repo, que no se versiona. Una variable que falta o está vacía toma el valor de desarrollo local del compose, así que `.env` solo hace falta para cambiar algún valor. Son los únicos valores por defecto del proyecto: el código no tiene ninguno. La plantilla es `.env.example`:
 
 ```bash
 cp .env.example .env
@@ -210,7 +227,7 @@ Al cambiar las variables de MySQL:
 
 - MySQL las aplica una sola vez, al crear el volumen de datos. Para que tomen efecto hay que borrar los datos con `docker compose down -v` y volver a levantarlo.
 - Si cambian `MYSQL_ROOT_PASSWORD`, las pruebas de integración necesitan `TYPING_TEST_MYSQL` con la contraseña nueva (ver [Pruebas](#pruebas)).
-- Si cambian `MYSQL_DATABASE`, `MYSQL_USER` o `MYSQL_PASSWORD`, `dotnet run` necesita la variable `ConnectionStrings__Typing` con los valores nuevos, porque `appsettings.Development.json` trae los de desarrollo.
+- `dotnet run` y `dotnet ef` no leen `.env`: necesitan la variable `ConnectionStrings__Typing` con los valores de `MYSQL_DATABASE`, `MYSQL_USER` y `MYSQL_PASSWORD`.
 
 ## Integración con los otros equipos
 

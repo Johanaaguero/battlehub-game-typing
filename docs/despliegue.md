@@ -41,7 +41,7 @@ Solo la API se conecta a MySQL: la base de datos no se expone al navegador.
 
 ## Configuración por entorno
 
-Las variables de la API están en el README, en la sección «Configuración fuera de Development». El frontend solo necesita `TYPING_API_URL` al compilar.
+Las variables de la API están en el README, en la sección «Configuración (variables de entorno)». El frontend solo necesita `TYPING_API_URL` al compilar.
 
 ## ¿El microfrontend necesita su propia imagen?
 

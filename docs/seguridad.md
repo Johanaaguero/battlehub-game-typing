@@ -33,15 +33,19 @@ Además de gitleaks, se revisó el historial completo con git:
 
 | Valor | Dónde aparece | Para qué |
 |---|---|---|
-| `typing_dev` | `docker-compose.yml`, `appsettings.Development.json`, README y la constante `LocalDevelopmentConnectionString`, que usan las herramientas de EF Core en tiempo de diseño | Usuario `typing` del MySQL local |
-| `typing_root` | `docker-compose.yml` y pruebas de integración (`TypingApiFactory`) | Usuario `root` del MySQL local |
+| `typing_dev` | `docker-compose.yml` (valor por defecto), `.env.example` y README | Usuario `typing` del MySQL local |
+| `typing_root` | `docker-compose.yml` (valor por defecto) y `.env.example` | Usuario `root` del MySQL local |
 | `ci_root` | `.github/workflows/ci.yml` | Usuario `root` del MySQL temporal del CI |
 
-Solo sirven para bases de datos locales o del CI, que no se exponen fuera de la máquina. Ningún despliegue las usa: ahí la conexión llega por `ConnectionStrings__Typing`. Más adelante, el compose las leerá desde `.env`, con estos valores solo como valores por defecto de desarrollo.
+Solo sirven para bases de datos locales o del CI, que no se exponen fuera de la máquina. Ningún despliegue las usa: ahí la conexión llega por `ConnectionStrings__Typing`.
+
+En el código no queda ninguna (R-09): ni en los `appsettings`, ni en las herramientas de EF, ni en las pruebas, ni en el frontend. Todo se lee de variables de entorno. Los únicos valores por defecto son los de `docker-compose.yml` (`${VARIABLE:-valor}`), para que `docker compose up` funcione desde cero (R-27, R-29).
+
+> **Decisión por confirmar con el profesor.** Si los valores por defecto del compose cuentan como credenciales fijas (R-09), el cambio es exigir las variables con `${MYSQL_PASSWORD:?mensaje}` y similares. Entonces habría que correr `cp .env.example .env` antes de `docker compose up`, y eso choca con «el único comando es `docker compose up`» (R-29). Mientras no se confirme, se mantienen los valores por defecto.
 
 ## Reglas para no filtrar secretos
 
-- **Variables de entorno.** El único secreto de la API, `ConnectionStrings__Typing`, solo se configura como variable de entorno; la lista completa está en el README, en «Configuración fuera de Development».
+- **Variables de entorno.** El único secreto de la API, `ConnectionStrings__Typing`, solo se configura como variable de entorno; la lista completa está en el README, en «Configuración (variables de entorno)».
 - **`.gitignore`.** Ignora `.env` y `.env.*` (salvo `.env.example`), `appsettings.Local.json`, claves y certificados (`*.pem`, `*.pfx`, `*.key`, `*.p12`), `docker-compose.override.yml` y los reportes de gitleaks.
 - **`.dockerignore` de la raíz** (imagen de la API). Solo entran el código de `TypingBattle.Api`, sus `appsettings` y la solución. Quedan fuera los secretos, `.git`, el CI, `bin`/`obj`, `src/frontend`, `tests` y `docs`.
 - **`src/frontend/.dockerignore`** (imagen del microfrontend). Solo entran `src`, la configuración de Webpack y TypeScript y los `package*.json`. Quedan fuera `node_modules`, `dist`, las pruebas, `.env` y `.npmrc`.
