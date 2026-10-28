@@ -60,8 +60,8 @@ Notificación a Matchmaking
  - Estado: el Matchmaking Service todavía no publica /finish (su rama feat/matchmaking-api-integration tiene la API REST, pero sin ese endpoint). Cuando exista, basta con configurar BaseUrl y las credenciales.
 
 Seguridad y validación
- - El hub exige un usuario autenticado (política TypingPlay): un JWT de Auth0, que desde el navegador viaja en ?access_token=, o en desarrollo la identidad de ?dev_user= (solo con Auth:Mode=Development). Sin usuario, la conexión responde 401.
- - El jugador es siempre el del token (claim sub). Si el currentUser que envía el cliente no coincide, JoinMatch responde false con joinFailed { reason: "user_mismatch" }; SendPlayerUpdate responde con updateFailed por el mismo motivo.
+ - El hub no pide autenticación (R-30): el Shell inicia la sesión y le pasa el currentUser al microfrontend, que lo envía en cada petición. Si currentUser viene vacío, JoinMatch responde false con joinFailed { reason: "user_required" }; SendPlayerUpdate responde con updateFailed por el mismo motivo.
+ - El hub confía en el currentUser de la petición: no verifica que sea quien dice ser.
  - Solo un jugador que entró a la partida puede enviar métricas (si no, updateFailed { reason: "not_joined" }) o terminarla (si no, matchEnded "invalid" solo para quien lo pidió).
  - Reusar ResultValidator para validar los datos antes de persistir.
  - Limitar tamaño de metadata usando ResultValidator.MaxMetadataChars y número de jugadores con ResultValidator.MaxPlayers.

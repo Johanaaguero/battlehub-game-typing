@@ -15,10 +15,10 @@ Reglas comunes:
 
 - JSON en `camelCase`.
 - **Fechas en UTC**, ISO-8601 con sufijo `Z`. Al recibir, un valor con offset (`-06:00`) se convierte a UTC y un valor **sin zona** se rechaza con 400.
-- Los ids de jugador pueden traer caracteres especiales (los de Auth0 son `auth0|64f0c1...`): en la URL hay que codificarlos (`encodeURIComponent`). Los ids distinguen mayúsculas y minúsculas.
+- Los ids de jugador pueden traer caracteres especiales (por ejemplo `auth0|64f0c1...`): en la URL hay que codificarlos (`encodeURIComponent`). Los ids distinguen mayúsculas y minúsculas.
 - Errores de validación: `400` con formato `application/problem+json` y el detalle en `errors`, por campo.
 
-> **Autenticación:** todos los endpoints exigen un usuario autenticado (`401` si no hay). Con Auth0, un JWT en `Authorization: Bearer`; en desarrollo local (`Auth:Mode=Development`), el encabezado `X-Dev-User`. Los `GET` piden además `Auth:RequiredPermission` si está configurado (por ejemplo `games.typing.play`). `POST /results` exige el permiso `games.typing.results.write` (`403` sin él): es para servicios, porque el hub guarda el resultado sin pasar por HTTP. El detalle está en el README.
+> **Sin autenticación:** el juego no se conecta con Auth0 (R-30), así que ningún endpoint pide token, encabezados de identidad ni permisos. El jugador es el que indica la ruta o el cuerpo de la petición. El detalle y sus consecuencias están en el README, en «Identidad del jugador».
 
 ## Desde el backend del hub (sin HTTP)
 

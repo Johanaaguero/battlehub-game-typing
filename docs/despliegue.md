@@ -6,7 +6,7 @@ Qué hay que desplegar para que Typing Battle funcione fuera de las máquinas de
 
 | Servicio | Tecnología | Qué expone | Puerto local | Necesita |
 |---|---|---|---|---|
-| API y hub de Typing | .NET 10 (`TypingBattle.Api`) | REST `/api/games/typing`, hub SignalR `/hubs/typing` y `GET /health` | 5015 | MySQL, el tenant de Auth0 y, para avisar el fin de partida, Matchmaking |
+| API y hub de Typing | .NET 10 (`TypingBattle.Api`) | REST `/api/games/typing`, hub SignalR `/hubs/typing` y `GET /health` | 5015 | MySQL y, para avisar el fin de partida, Matchmaking |
 | Microfrontend (remote `typingGame`) | Aurelia 2 y Webpack Module Federation | Archivos estáticos: `remoteEntry.js` y sus chunks | 4001 | La URL pública de la API, que se fija al compilar (`TYPING_API_URL`) |
 | Base de datos | MySQL 8.4, esquema `typing_battle` | Tablas `game_results` y `player_results` (migraciones de EF Core) | 3306 | Almacenamiento persistente y respaldos |
 
@@ -16,16 +16,16 @@ Solo la API se conecta a MySQL: la base de datos no se expone al navegador.
 
 | Servicio | Equipo | Relación con Typing | Qué hay que coordinar para desplegar |
 |---|---|---|---|
-| Shell | 3 | Carga el remote `typingGame` (ADR-003) y le entrega el contexto del juego: usuario, sala y `getAccessToken` | Registrar la URL pública de `remoteEntry.js` en su configuración de remotes. Su origen público va en `Cors__AllowedOrigins` de la API |
+| Shell | 3 | Carga el remote `typingGame` (ADR-003) y le entrega el contexto del juego: usuario y sala | Registrar la URL pública de `remoteEntry.js` en su configuración de remotes. Su origen público va en `Cors__AllowedOrigins` de la API |
 | Matchmaking | 2 | Crea las salas. Al terminar la partida, la API le avisa con `POST /api/matches/{matchId}/finish` y un token M2M (ADR-004) | Su URL pública, que va en `Matchmaking__BaseUrl` |
-| Profile | 1 | El Shell lo consulta para saber qué juegos tiene habilitados el usuario (`typing` requiere `games.typing.play`). Typing no lo llama directamente | Nada específico de Typing |
-| Auth0 | 1 | Emite el JWT del usuario, que valida la API, y el token M2M con el que la API avisa a Matchmaking | Registrar las URLs públicas del Shell (callbacks, logout y orígenes web), el audience de la API de Typing y el cliente M2M con el permiso `matches.finish` |
+| Profile | 1 | El Shell lo consulta para saber qué juegos tiene habilitados el usuario. Typing no lo llama directamente | Nada específico de Typing |
+| Auth0 | 1 | Solo el Shell inicia sesión con Auth0: Typing no valida tokens de usuario (R-30). Emite el token M2M con el que la API avisa a Matchmaking | Registrar las URLs públicas del Shell (callbacks, logout y orígenes web) y el cliente M2M con el permiso `matches.finish` |
 
 ## Cómo se comunican
 
 1. El usuario abre el Shell e inicia sesión con Auth0.
 2. El Shell descarga `remoteEntry.js` desde el hosting del microfrontend y monta el juego.
-3. El juego llama a la API por REST y se conecta al hub por SignalR, con el JWT del usuario. Estas llamadas salen del navegador desde el origen del Shell, por eso la API debe permitirlo en CORS.
+3. El juego llama a la API por REST y se conecta al hub por SignalR, enviando el `currentUser` que le dio el Shell. Estas llamadas salen del navegador desde el origen del Shell, por eso la API debe permitirlo en CORS.
 4. Al terminar la partida, la API guarda el resultado en MySQL con EF Core.
 5. La API pide un token M2M a Auth0 y avisa el fin de la partida a Matchmaking.
 
