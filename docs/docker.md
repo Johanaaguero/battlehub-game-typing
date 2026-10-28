@@ -12,7 +12,7 @@ Cómo construir, levantar y comprobar MySQL, la API y el microfrontend de Typing
 
 ## 1. Preparar `.env` (opcional)
 
-Sin `.env`, el compose usa los valores de desarrollo y todo funciona. Solo hace falta para cambiar algún valor o para poner un secreto, como el Client Secret del aviso a Matchmaking:
+Sin `.env`, el compose usa los valores de desarrollo y todo funciona. Solo hace falta para cambiar algún valor como las contraseñas de MySQL:
 
 ```powershell
 Copy-Item .env.example .env
@@ -116,5 +116,4 @@ La imagen de la API no lleva configuración: al ejecutarla hay que pasar al meno
 | `typing-battle-api` no aparece en `docker compose ps` | La API se detuvo al arrancar | Ver el error con `docker compose ps -a` y `docker compose logs api` |
 | La API se detiene con `Access denied` de MySQL después de cambiar `.env` | MySQL aplica las contraseñas solo al crear el volumen | `docker compose down -v` (borra los datos) y volver a levantar |
 | El navegador bloquea las llamadas del juego a la API (error de CORS en la consola) | El origen del Shell no está permitido en la API | En `.env`: `CORS_SHELL_ORIGIN` con el origen del Shell; luego `docker compose up -d api` |
-| Matchmaking no recibe el fin de la partida | `MATCHMAKING_BASE_URL` está vacío o apunta a `localhost`, que dentro del contenedor es el propio contenedor | En `.env`: `MATCHMAKING_BASE_URL=http://host.docker.internal:5211`, el Client ID y el Client Secret; luego `docker compose up -d api` |
 | El juego llama a una URL de la API equivocada | `TYPING_API_URL` quedó fija al construir la imagen | `docker compose up -d --build frontend` |

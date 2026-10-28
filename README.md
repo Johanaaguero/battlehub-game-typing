@@ -10,7 +10,7 @@ Este servicio será responsable de:
 - Proporcionar comunicación en tiempo real mediante SignalR.
 - Mantener persistencia propia de los resultados de las partidas.
 - Exponer una API REST para resultados, historial y estadísticas.
-- Integrarse con el sistema de Matchmaking de BattleHub.
+- Integrarse con Matchmaking a través del Shell: el juego avisa el fin de la partida al Shell y este lo notifica a Matchmaking.
 - Proporcionar el microfrontend correspondiente al juego.
 - Incluir pruebas unitarias y de integración.
 
@@ -90,8 +90,6 @@ El juego no tiene contacto con Auth0 (R-30). El Shell inicia la sesión del usua
 | `ConnectionStrings__Typing` | Cadena de conexión a MySQL (obligatoria: la API no arranca sin ella) |
 | `Database__MigrateOnStartup` | `true` para aplicar las migraciones al arrancar (por defecto `false`) |
 | `Cors__AllowedOrigins__0`, `__1`… | Orígenes del Shell / microfrontend |
-| `Matchmaking__BaseUrl` | URL del Matchmaking Service para avisar el fin de partida (ADR-004). Vacía: no se avisa |
-| `Matchmaking__Auth0__Domain`, `__ClientId`, `__ClientSecret`, `__Audience` | Cliente M2M de Auth0 con el permiso `matches.finish` (secretos: nunca en el repo) |
 
 ### Migraciones
 
@@ -177,7 +175,7 @@ docker compose up -d --build
 
 - **Mismos puertos que `dotnet run` y `npm start`:** el Shell carga el juego sin cambiar nada, pero no se pueden correr a la vez que esos comandos.
 - **La API corre en Production:** aplica las migraciones al arrancar. No pide autenticación: el jugador es el `currentUser` que le envía el juego.
-- **El aviso de fin de partida a Matchmaking** queda inactivo hasta configurarlo en `.env` (ver la tabla).
+- **Matchmaking:** la API no lo llama (R-46). El fin de la partida lo avisa el Shell.
 - `docker compose up -d mysql` sigue levantando solo MySQL, para usar `dotnet run` o correr las pruebas.
 
 ```bash
@@ -205,9 +203,6 @@ cp .env.example .env
 | `MYSQL_USER` | `typing` | Usuario con el que se conecta la API |
 | `MYSQL_PASSWORD` | `typing_dev` | Contraseña de ese usuario |
 | `CORS_SHELL_ORIGIN`, `CORS_FRONTEND_ORIGIN` | `http://localhost:4000` y `http://localhost:4001` | Orígenes del navegador que pueden llamar a la API |
-| `MATCHMAKING_BASE_URL` | Vacío: no se avisa | URL de Matchmaking para el aviso de fin de partida. Desde el contenedor, tu máquina es `host.docker.internal`: `http://host.docker.internal:5211` |
-| `MATCHMAKING_AUTH0_DOMAIN`, `MATCHMAKING_AUTH0_AUDIENCE` | Los de `scripts/Start-Integration.ps1` | Cliente M2M de Auth0 con el permiso `matches.finish` |
-| `MATCHMAKING_AUTH0_CLIENT_ID`, `MATCHMAKING_AUTH0_CLIENT_SECRET` | Vacíos | Credenciales de ese cliente. El Client ID está en `appsettings.Development.json`; el Client Secret es un secreto y solo va en `.env` |
 | `TYPING_API_URL` | `http://localhost:5015` | URL de la API que usa el frontend. Queda fija al construir la imagen: al cambiarla, `docker compose up -d --build frontend` |
 
 Al cambiar las variables de MySQL:
@@ -236,7 +231,7 @@ Puertos locales del proyecto:
 
 Para probarlo juntos: MySQL (`docker compose up -d mysql`), la API (`dotnet run --project src/backend/TypingBattle.Api`), el remote (`npm start` en `frontend/`) y el Shell (`npm start` en su repo). Las tres primeras también se pueden levantar juntas con `docker compose up -d --build` (ver [Todo con Docker Compose](#todo-con-docker-compose)). La API ya permite los orígenes `http://localhost:4000` y `http://localhost:4001`.
 
-**Matchmaking (Equipo 2).** Al guardar el resultado, el backend avisa el fin de la partida con `POST /api/matches/{matchId}/finish` (ADR-004). Queda inactivo hasta configurar `Matchmaking__BaseUrl`; el detalle está en [`docs/api-typing-hub.md`](docs/api-typing-hub.md).
+**Matchmaking (Equipo 2).** Typing no llama a Matchmaking (R-46). Al terminar la partida, el juego avisa al Shell con un evento y el Shell notifica a Matchmaking; la API solo guarda el resultado en MySQL.
 
 **Profile y Auth0 (Equipo 1).** Typing no se conecta con Auth0 ni con Profile (R-30). El Shell inicia la sesión con Auth0, consulta al Profile Service qué juegos tiene habilitados el usuario y solo muestra Typing si corresponde; después le pasa el `currentUser` al microfrontend.
 
