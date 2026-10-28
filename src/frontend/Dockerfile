@@ -1,6 +1,6 @@
-# Imagen del microfrontend de Typing Battle (remote typingGame). Se construye desde la carpeta frontend/:
-#   docker build -t typing-battle-frontend frontend
-#   docker build --build-arg TYPING_API_URL=https://typing.mi-dominio.com -t typing-battle-frontend frontend
+# Imagen del microfrontend de Typing Battle (remote typingGame). Se construye desde la raíz del repo:
+#   docker build -t typing-battle-frontend src/frontend
+#   docker build --build-arg TYPING_API_URL=https://typing.mi-dominio.com -t typing-battle-frontend src/frontend
 # La URL de la API queda fija al compilar (TYPING_API_URL); sin ella se usa http://localhost:5015.
 
 # Etapa 1: compilar con Node.
