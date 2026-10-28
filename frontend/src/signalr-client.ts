@@ -11,41 +11,12 @@ import type {
     PlayerUpdateDto,
 } from './game-contracts';
 
-/**
- * Credenciales para el hub.
- */
-export interface HubAuthOptions {
-    /**
-     * Token de Auth0. SignalR lo envía en el encabezado Authorization o,
-     * con WebSockets, en la URL (?access_token=).
-     */
-    accessTokenFactory?: () => Promise<string>;
-
-    /**
-     * Identidad de desarrollo (dev_user y dev_name en la URL). La API solo
-     * la acepta con Auth:Mode=Development.
-     */
-    devUser?: { id: string; displayName: string };
-}
-
 export class SignalRClient {
     private readonly connection: HubConnection;
 
-    public constructor(
-        hubUrl: string,
-        auth: HubAuthOptions = {}
-    ) {
-        const url = !auth.accessTokenFactory && auth.devUser
-            ? withDevUser(hubUrl, auth.devUser)
-            : hubUrl;
-
+    public constructor(hubUrl: string) {
         this.connection = new HubConnectionBuilder()
-            .withUrl(
-                url,
-                auth.accessTokenFactory
-                    ? { accessTokenFactory: auth.accessTokenFactory }
-                    : {}
-            )
+            .withUrl(hubUrl)
             .withAutomaticReconnect()
             .build();
     }
@@ -216,13 +187,4 @@ export class SignalRClient {
     public get state(): HubConnectionState {
         return this.connection.state;
     }
-}
-
-function withDevUser(
-    url: string,
-    user: { id: string; displayName: string }
-): string {
-    const separator = url.includes('?') ? '&' : '?';
-
-    return `${url}${separator}dev_user=${encodeURIComponent(user.id)}&dev_name=${encodeURIComponent(user.displayName)}`;
 }

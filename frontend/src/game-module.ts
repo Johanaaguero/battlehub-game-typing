@@ -3,7 +3,6 @@ import { customElement } from 'aurelia';
 import type {
     EndMatchRequest,
     GameContext,
-    GameContextExtensions,
     GameModule as IGameModule,
     JoinMatchRequest,
     LeaveMatchRequest,
@@ -11,9 +10,7 @@ import type {
 } from './game-contracts';
 
 import { RESULTS_API_URL, TYPING_HUB_URL } from './config';
-import { SignalRClient, type HubAuthOptions } from './signalr-client';
-
-type TypingGameContext = GameContext & GameContextExtensions;
+import { SignalRClient } from './signalr-client';
 
 interface TypingPlayer {
     userId: string;
@@ -71,7 +68,7 @@ type ActiveSection =
 
 @customElement('typing-game-module')
 export class GameModule implements IGameModule {
-    public context: TypingGameContext | null = null;
+    public context: GameContext | null = null;
 
     /**
      * Indica que el juego se está ejecutando localmente,
@@ -179,7 +176,7 @@ export class GameModule implements IGameModule {
     private readonly apiBaseUrl = RESULTS_API_URL;
 
     /**
-     * Se reemplaza en initialize() por uno con las credenciales del usuario.
+     * Se reemplaza en initialize() por una conexión nueva al hub.
      */
     private signalR = new SignalRClient(TYPING_HUB_URL);
 
@@ -210,10 +207,7 @@ export class GameModule implements IGameModule {
 
         this.running = false;
 
-        this.signalR = new SignalRClient(
-            TYPING_HUB_URL,
-            this.createHubAuth(context)
-        );
+        this.signalR = new SignalRClient(TYPING_HUB_URL);
 
         this.resetGameInterface();
 
@@ -1046,60 +1040,6 @@ export class GameModule implements IGameModule {
     }
 
     // =========================================================
-    // AUTENTICACIÓN
-    // =========================================================
-
-    /**
-     * Credenciales para el hub: el token de Auth0 si el Shell entrega
-     * getAccessToken; si no, la identidad de desarrollo del contexto.
-     */
-    private createHubAuth(
-        context: TypingGameContext
-    ): HubAuthOptions {
-        const getAccessToken = context.getAccessToken;
-
-        if (typeof getAccessToken === 'function') {
-            return {
-                accessTokenFactory: async () =>
-                    (await getAccessToken()) ?? '',
-            };
-        }
-
-        return {
-            devUser: {
-                id: context.currentUser.id,
-                displayName: context.currentUser.displayName,
-            },
-        };
-    }
-
-    /**
-     * Encabezados para la API REST, con el mismo criterio que el hub.
-     * La identidad de desarrollo va codificada: los encabezados HTTP no
-     * admiten tildes ni eñes.
-     */
-    private async authHeaders(): Promise<Record<string, string>> {
-        const context = this.context;
-
-        if (!context) {
-            return {};
-        }
-
-        if (typeof context.getAccessToken === 'function') {
-            const token = await context.getAccessToken();
-
-            return token
-                ? { Authorization: `Bearer ${token}` }
-                : {};
-        }
-
-        return {
-            'X-Dev-User': encodeURIComponent(context.currentUser.id),
-            'X-Dev-Name': encodeURIComponent(context.currentUser.displayName),
-        };
-    }
-
-    // =========================================================
     // HISTORIAL
     // =========================================================
 
@@ -1124,8 +1064,7 @@ export class GameModule implements IGameModule {
 
             const response =
                 await fetch(
-                    `${this.apiBaseUrl}/players/${userId}/history?limit=50&offset=0`,
-                    { headers: await this.authHeaders() }
+                    `${this.apiBaseUrl}/players/${userId}/history?limit=50&offset=0`
                 );
 
             if (!response.ok) {
@@ -1183,8 +1122,7 @@ export class GameModule implements IGameModule {
 
             const response =
                 await fetch(
-                    `${this.apiBaseUrl}/players/${userId}/stats`,
-                    { headers: await this.authHeaders() }
+                    `${this.apiBaseUrl}/players/${userId}/stats`
                 );
 
             if (!response.ok) {
