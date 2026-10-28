@@ -1,23 +1,23 @@
 # Typing Battle en local: MySQL (ADR-005), la API y el microfrontend de Typing.
-# La configuración se lee de .env (plantilla: .env.example). Sin .env se usan los valores de desarrollo,
-# que coinciden con appsettings.Development.json y con el valor por defecto de las pruebas de integración
-# (TYPING_TEST_MYSQL).
+# Toda la configuración sale de .env y no hay valores por defecto: si falta una variable, Compose se
+# detiene y dice cuál. Antes de la primera vez, copiar la plantilla:
 #
-#   docker compose up -d --build     todo (reemplaza a dotnet run en el puerto 5015 y a npm start en el 4001)
-#   docker compose up -d mysql       solo MySQL, para correr la API con dotnet run o las pruebas
-#   docker compose down              (agregar -v para borrar también los datos)
+#   cp .env.example .env               (PowerShell: Copy-Item .env.example .env)
+#   docker compose up -d --build       todo: MySQL, la API y el microfrontend
+#   docker compose up -d mysql         solo MySQL, para correr las pruebas de integración
+#   docker compose down                (agregar -v para borrar también los datos)
 
 services:
   mysql:
     image: mysql:8.4
     container_name: typing-battle-mysql
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-typing_root}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-typing_battle}
-      MYSQL_USER: ${MYSQL_USER:-typing}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-typing_dev}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?falta en .env}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:?falta en .env}
+      MYSQL_USER: ${MYSQL_USER:?falta en .env}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?falta en .env}
     ports:
-      - "3306:3306"
+      - "${MYSQL_PORT:?falta en .env}:3306"
     volumes:
       - typing-mysql-data:/var/lib/mysql
     healthcheck:
@@ -38,24 +38,24 @@ services:
       mysql:
         condition: service_healthy
     environment:
-      ConnectionStrings__Typing: Server=mysql;Port=3306;Database=${MYSQL_DATABASE:-typing_battle};User ID=${MYSQL_USER:-typing};Password=${MYSQL_PASSWORD:-typing_dev}
+      ConnectionStrings__Typing: Server=mysql;Port=3306;Database=${MYSQL_DATABASE:?falta en .env};User ID=${MYSQL_USER:?falta en .env};Password=${MYSQL_PASSWORD:?falta en .env}
       Database__MigrateOnStartup: "true"
-      Cors__AllowedOrigins__0: ${CORS_SHELL_ORIGIN:-http://localhost:4000}
-      Cors__AllowedOrigins__1: ${CORS_FRONTEND_ORIGIN:-http://localhost:4001}
+      Cors__AllowedOrigins__0: ${CORS_SHELL_ORIGIN:?falta en .env}
+      Cors__AllowedOrigins__1: ${CORS_FRONTEND_ORIGIN:?falta en .env}
     ports:
-      - "5015:8080"
+      - "${API_PORT:?falta en .env}:8080"
 
   frontend:
     build:
       context: src/frontend
       args:
         # URL de la API tal como la usa el navegador. Queda fija al construir la imagen.
-        TYPING_API_URL: ${TYPING_API_URL:-http://localhost:5015}
+        TYPING_API_URL: ${TYPING_API_URL:?falta en .env}
     image: typing-battle-frontend:local
     container_name: typing-battle-frontend
     # Sin depends_on: son archivos estáticos y es el navegador el que llama a la API.
     ports:
-      - "4001:8080"
+      - "${FRONTEND_PORT:?falta en .env}:8080"
 
 volumes:
   typing-mysql-data:
