@@ -42,9 +42,6 @@ services:
       Database__MigrateOnStartup: "true"
       Cors__AllowedOrigins__0: ${CORS_SHELL_ORIGIN:-http://localhost:4000}
       Cors__AllowedOrigins__1: ${CORS_FRONTEND_ORIGIN:-http://localhost:4001}
-      Auth__Domain: ${AUTH_DOMAIN:-dev-jaii1peslxnejq0y.us.auth0.com}
-      Auth__Audience: ${AUTH_AUDIENCE:-https://api.battlehub.local/typing}
-      Auth__RequiredPermission: ${AUTH_REQUIRED_PERMISSION:-}
       # Aviso de fin de partida (ADR-004): inactivo mientras MATCHMAKING_BASE_URL esté vacío.
       Matchmaking__BaseUrl: ${MATCHMAKING_BASE_URL:-}
       Matchmaking__Auth0__Domain: ${MATCHMAKING_AUTH0_DOMAIN:-dev-jaii1peslxnejq0y.us.auth0.com}
