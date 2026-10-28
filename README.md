@@ -233,6 +233,28 @@ Para probarlo juntos: MySQL (`docker compose up -d mysql`), la API (`dotnet run 
 
 **Matchmaking (Equipo 2).** Typing no llama a Matchmaking (R-46). Al terminar la partida, el juego avisa al Shell con un evento y el Shell notifica a Matchmaking; la API solo guarda el resultado en MySQL.
 
+#### Evento de fin de partida
+
+El microfrontend emite en `window` un `CustomEvent` llamado `battlehub:game-finished` cuando el servidor cierra una partida real (el contrato está en `frontend/src/game-contracts.ts`). El Shell lo escucha y notifica a Matchmaking:
+
+```ts
+window.addEventListener('battlehub:game-finished', (event) => {
+    const { matchId, gameType, winnerUserId, players, finishedAt } = (event as CustomEvent).detail;
+    // notificar a Matchmaking el fin de la partida `matchId`
+});
+```
+
+| Campo de `detail` | Contenido |
+|---|---|
+| `matchId`, `gameType` | Los del contexto que el Shell entregó al juego |
+| `winnerUserId` | Ganador de la partida (`null` si este cliente no recibió el resultado) |
+| `players` | `{ userId, displayName, score, position }` en orden de ranking; vacío si este cliente no recibió el resultado |
+| `finishedAt` | Fin de la partida en UTC (ISO-8601 con `Z`); `null` si no recibió el resultado |
+
+- **Cuándo se emite:** una sola vez por partida, cuando el hub responde `created` o `already_exists`. No se emite en el modo práctica ni si el resultado fue inválido o hubo un error.
+- **Una vez por jugador:** cada jugador tiene su propio navegador y su propio Shell, así que cada uno recibe el evento de la misma partida. El Shell (o Matchmaking) debe tolerar el aviso repetido de un mismo `matchId`.
+- **Quién emite:** el juego solo emite el evento. Cómo se autentica el Shell con Matchmaking al notificar queda fuera de Typing.
+
 **Profile y Auth0 (Equipo 1).** Typing no se conecta con Auth0 ni con Profile (R-30). El Shell inicia la sesión con Auth0, consulta al Profile Service qué juegos tiene habilitados el usuario y solo muestra Typing si corresponde; después le pasa el `currentUser` al microfrontend.
 
 ## Flujo de trabajo

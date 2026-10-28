@@ -53,7 +53,7 @@ Metadata para Typing
    }
 
 Fin de la partida y Matchmaking
- - Typing no llama a Matchmaking (R-46). Al guardar el resultado, el hub anuncia matchEnded al grupo; el microfrontend avisa al Shell con un evento y el Shell notifica a Matchmaking.
+ - Typing no llama a Matchmaking (R-46). Al guardar el resultado, el hub anuncia matchEnded al grupo; el microfrontend avisa al Shell con un evento y el Shell notifica a Matchmaking. El evento (battlehub:game-finished) está descrito en el README, en «Evento de fin de partida».
  - El hub solo persiste el resultado con IResultsService. No hay colas, reintentos ni credenciales de otros servicios en la API.
 
 Seguridad y validación
