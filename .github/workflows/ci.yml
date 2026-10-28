@@ -61,6 +61,9 @@ jobs:
         run: dotnet build --no-restore
 
       - name: Migraciones al día con el modelo
+        # dotnet ef solo arma el modelo y no se conecta a MySQL: basta una cadena sin credenciales.
+        env:
+          ConnectionStrings__Typing: "Server=localhost;Database=typing_ci"
         run: dotnet ef migrations has-pending-model-changes --project src/backend/TypingBattle.Api --no-build
 
       - name: Unit tests
@@ -94,6 +97,9 @@ jobs:
         run: npm run lint
 
       - name: Build (genera dist/remoteEntry.js)
+        # La URL de la API es obligatoria al compilar; aquí solo importa que el build funcione.
+        env:
+          TYPING_API_URL: http://localhost:5015
         run: npm run build
 
       - name: Unit tests
@@ -111,4 +117,4 @@ jobs:
         run: docker build -f src/backend/TypingBattle.Api/Dockerfile -t typing-battle-api:ci .
 
       - name: Imagen del frontend
-        run: docker build -t typing-battle-frontend:ci src/frontend
+        run: docker build --build-arg TYPING_API_URL=http://localhost:5015 -t typing-battle-frontend:ci src/frontend
