@@ -1,7 +1,6 @@
 using TypingBattle.Api.Persistence;
 using TypingBattle.Api.Results;
 using TypingBattle.Api.Hubs;
-using TypingBattle.Api.Matchmaking;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,8 +14,6 @@ builder.Services.AddSignalR();
 builder.Services.AddSingleton<TypingMatchStore>();
 // Facade service for match logic (scoped to allow injecting IResultsService which is scoped)
 builder.Services.AddScoped<TypingMatchService>();
-// Aviso de fin de partida a Matchmaking (ADR-004). Inactivo mientras Matchmaking:BaseUrl esté vacío.
-builder.Services.AddMatchmakingIntegration(builder.Configuration);
 
 // El microfrontend corre en otro origen (el Shell), así que el navegador exige CORS.
 // Los orígenes permitidos salen de la configuración: Cors:AllowedOrigins.

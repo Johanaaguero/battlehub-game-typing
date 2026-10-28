@@ -6,25 +6,22 @@ namespace TypingBattle.Api.Hubs;
 /// <summary>
 /// Servicio que contiene la lógica de partida (facade) y usa TypingMatchStore para el estado compartido.
 /// Responsable del lifecycle, progreso, métricas y finalizar partidas llamando a IResultsService.
-/// La notificación a Matchmaking es desacoplada mediante IMatchFinishedNotifier (opcional, configurable).
+/// El fin de la partida no se avisa a Matchmaking desde aquí (R-46): el juego se lo notifica al Shell con un evento.
 /// </summary>
 public sealed class TypingMatchService
 {
     private readonly TypingMatchStore store;
     private readonly IResultsService resultsService;
     private readonly TimeProvider timeProvider;
-    private readonly IMatchFinishedNotifier? notifier;
 
     public TypingMatchService(
         TypingMatchStore store,
         IResultsService resultsService,
-        TimeProvider timeProvider,
-        IMatchFinishedNotifier? notifier = null)
+        TimeProvider timeProvider)
     {
         this.store = store ?? throw new ArgumentNullException(nameof(store));
         this.resultsService = resultsService ?? throw new ArgumentNullException(nameof(resultsService));
         this.timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
-        this.notifier = notifier;
     }
 
     /// <summary>
@@ -153,30 +150,6 @@ public sealed class TypingMatchService
             Metadata: metadataElement);
 
         // Call existing results service
-        var outcome = await resultsService.SaveAsync(saveRequest, cancellationToken);
-
-        // Notify matchmaking if configured (decoupled)
-        try
-        {
-            if (notifier is not null)
-            {
-                await notifier.NotifyMatchFinishedAsync(request.MatchId, outcome, cancellationToken);
-            }
-        }
-        catch
-        {
-            // Notifier errors are non-fatal for result persistence; swallow after logging in future.
-        }
-
-        return outcome;
+        return await resultsService.SaveAsync(saveRequest, cancellationToken);
     }
-}
-
-/// <summary>
-/// Abstracción para notificar a Matchmaking sobre el fin de una partida. La implementación concreta
-/// se decide por el equipo (HTTP callback, message bus, SignalR a otro hub, etc.).
-/// </summary>
-public interface IMatchFinishedNotifier
-{
-    Task NotifyMatchFinishedAsync(string matchId, SaveResultOutcome outcome, CancellationToken cancellationToken = default);
 }
