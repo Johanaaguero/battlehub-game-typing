@@ -134,7 +134,7 @@ El hub `/hubs/typing` corre en el mismo proceso y guarda el resultado al termina
 
 ## Frontend: cómo correrlo localmente
 
-Requisitos: Node 24 LTS (`src/frontend/.nvmrc`, ADR-003). Desde `src/frontend/`:
+Requisitos: Node 22 LTS (`src/frontend/.nvmrc`, ADR-003). Desde `src/frontend/`:
 
 ```bash
 npm ci

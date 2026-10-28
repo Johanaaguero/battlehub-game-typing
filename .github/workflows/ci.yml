@@ -4,7 +4,7 @@
 # y sus imágenes de Docker:
 # - Backend: restore, build, migraciones al día, pruebas unitarias y de integración contra un MySQL 8.4
 #   real (ADR-005), levantado como servicio.
-# - Frontend: install, lint, build y pruebas, con Node 24 desde src/frontend/.nvmrc (ADR-003).
+# - Frontend: install, lint, build y pruebas, con Node 22 desde src/frontend/.nvmrc (ADR-003).
 # - Docker: construye las imágenes de la API y del frontend, sin publicarlas, para detectar si un cambio
 #   rompe un Dockerfile.
 #
