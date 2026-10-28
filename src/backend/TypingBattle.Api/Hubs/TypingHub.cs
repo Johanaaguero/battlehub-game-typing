@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.SignalR;
-using TypingBattle.Api.Auth;
 using TypingBattle.Api.Results;
 
 namespace TypingBattle.Api.Hubs;
@@ -9,8 +8,9 @@ namespace TypingBattle.Api.Hubs;
 /// Delegar la lógica en TypingMatchService y notificar al grupo usando los contratos de TypingHubContracts.
 /// El estado en memoria de la partida se crea con el primer JoinMatch (la sala la administra Matchmaking);
 /// no se puede entrar a una partida que ya terminó.
-/// Exige un usuario autenticado (política <see cref="TypingPolicies.Play"/>): el jugador es siempre el del token y
-/// el currentUser que envía el cliente debe coincidir con él. Solo los jugadores de la partida envían métricas o la terminan.
+/// El juego no se autentica (R-30): el Shell inicia la sesión y le pasa el currentUser al microfrontend, que lo envía en
+/// cada petición. El hub confía en ese usuario; solo exige que venga informado. Solo los jugadores de la partida envían
+/// métricas o la terminan.
 /// </summary>
 public sealed class TypingHub : Hub
 {
@@ -31,13 +31,13 @@ public sealed class TypingHub : Hub
     {
         if (request is null) throw new ArgumentNullException(nameof(request));
 
-        if (!TryResolveUser(request.CurrentUser, out var userId))
+        if (!TryGetUser(request.CurrentUser, out var userId))
         {
-            await Clients.Caller.SendAsync("joinFailed", new { request.MatchId, reason = "user_mismatch" });
+            await Clients.Caller.SendAsync("joinFailed", new { request.MatchId, reason = "user_required" });
             return false;
         }
 
-        var displayName = string.IsNullOrWhiteSpace(request.DisplayName) ? Context.User.GetDisplayName() : request.DisplayName;
+        var displayName = string.IsNullOrWhiteSpace(request.DisplayName) ? userId : request.DisplayName;
         var joined = matchService.TryJoin(request.MatchId, userId, displayName);
         if (!joined)
         {
@@ -55,7 +55,7 @@ public sealed class TypingHub : Hub
     {
         if (request is null) throw new ArgumentNullException(nameof(request));
 
-        if (!TryResolveUser(request.CurrentUser, out var userId))
+        if (!TryGetUser(request.CurrentUser, out var userId))
         {
             return false;
         }
@@ -74,9 +74,9 @@ public sealed class TypingHub : Hub
     {
         if (update is null) throw new ArgumentNullException(nameof(update));
 
-        if (!TryResolveUser(update.CurrentUser, out var userId))
+        if (!TryGetUser(update.CurrentUser, out var userId))
         {
-            await Clients.Caller.SendAsync("updateFailed", new { update.MatchId, reason = "user_mismatch" });
+            await Clients.Caller.SendAsync("updateFailed", new { update.MatchId, reason = "user_required" });
             return false;
         }
 
@@ -103,7 +103,7 @@ public sealed class TypingHub : Hub
     {
         if (request is null) throw new ArgumentNullException(nameof(request));
 
-        if (!TryResolveUser(request.CurrentUser, out var userId) || !matchService.IsPlayer(request.MatchId, userId))
+        if (!TryGetUser(request.CurrentUser, out var userId) || !matchService.IsPlayer(request.MatchId, userId))
         {
             var errors = new Dictionary<string, string[]>
             {
@@ -136,13 +136,10 @@ public sealed class TypingHub : Hub
         }
     }
 
-    /// <summary>
-    /// Jugador de la conexión: el claim <c>sub</c> del token. Devuelve false si el cliente dice ser otro usuario.
-    /// </summary>
-    private bool TryResolveUser(string? claimedUserId, out string userId)
+    /// <summary>Jugador de la petición: el <c>currentUser</c> que envía el juego. Devuelve false si viene vacío.</summary>
+    private static bool TryGetUser(string? currentUser, out string userId)
     {
-        userId = Context.User.GetUserId() ?? "";
-        return userId.Length > 0
-            && (string.IsNullOrWhiteSpace(claimedUserId) || string.Equals(claimedUserId.Trim(), userId, StringComparison.Ordinal));
+        userId = currentUser?.Trim() ?? "";
+        return userId.Length > 0;
     }
 }

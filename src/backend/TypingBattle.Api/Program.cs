@@ -1,4 +1,3 @@
-using TypingBattle.Api.Auth;
 using TypingBattle.Api.Persistence;
 using TypingBattle.Api.Results;
 using TypingBattle.Api.Hubs;
@@ -8,8 +7,6 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
 builder.Services.AddProblemDetails();
-// JWT de Auth0 (Auth:Mode=Auth0) o identidad de desarrollo (Auth:Mode=Development, solo Development y Testing).
-builder.Services.AddTypingAuth(builder.Configuration, builder.Environment);
 builder.Services.AddTypingPersistence(builder.Configuration);
 builder.Services.AddTypingResults();
 // SignalR and Typing services
@@ -42,13 +39,11 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseExceptionHandler();
-// CORS antes de la autenticación: el preflight (OPTIONS) se responde sin token.
 app.UseCors();
-app.UseAuthentication();
-app.UseAuthorization();
 
 app.MapHealthChecks("/health");
-app.MapHub<TypingHub>("/hubs/typing").RequireAuthorization(TypingPolicies.Play);
+// El juego no se autentica (R-30): el Shell inicia la sesión y le pasa el currentUser al microfrontend.
+app.MapHub<TypingHub>("/hubs/typing");
 app.MapResultsEndpoints();
 
 app.Run();

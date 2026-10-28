@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Http.HttpResults;
-using TypingBattle.Api.Auth;
 
 namespace TypingBattle.Api.Results;
 
@@ -13,14 +12,12 @@ public static class ResultsEndpoints
 
     public static RouteGroupBuilder MapResultsEndpoints(this IEndpointRouteBuilder app)
     {
+        // Sin autenticación (R-30): el juego no se conecta con Auth0; la API queda detrás del Shell y de la red del compose.
         var group = app.MapGroup(BasePath)
-            .WithTags("Typing Battle · resultados")
-            .RequireAuthorization(TypingPolicies.Play);
+            .WithTags("Typing Battle · resultados");
 
-        // El resultado lo registra el backend del juego (el hub, sin HTTP). Por HTTP solo con un token de servicio
-        // que traiga Auth:ResultsWritePermission (04-persistencia-y-api-juegos.md).
+        // El resultado lo registra el backend del juego (el hub, sin HTTP); el POST queda como API mínima del contrato.
         group.MapPost("/results", SaveResult)
-            .RequireAuthorization(TypingPolicies.ResultsWriter)
             .WithName("SaveTypingResult")
             .WithSummary("Registra el resultado de una partida finalizada. Solo se acepta un resultado por matchId.");
 

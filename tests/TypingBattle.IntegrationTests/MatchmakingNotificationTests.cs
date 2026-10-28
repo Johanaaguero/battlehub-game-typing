@@ -38,7 +38,7 @@ public class MatchmakingNotificationTests(TypingApiFactory factory) : IClassFixt
                 .AddHttpClient(MatchmakingClient.HttpClientName)
                 .ConfigurePrimaryHttpMessageHandler(() => matchmaking));
         });
-        await using var connection = app.CreateHubConnection("ana");
+        await using var connection = app.CreateHubConnection();
         await connection.StartAsync();
 
         var matchId = $"match-{Guid.NewGuid():N}";
