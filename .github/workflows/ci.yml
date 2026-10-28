@@ -42,7 +42,9 @@ jobs:
 
     env:
       DOTNET_NOLOGO: true
-      TYPING_TEST_MYSQL: "Server=127.0.0.1;Port=3306;User ID=root;Password=ci_root"
+      # Sin TLS: el MySQL del CI es temporal, y el conector MySql.Data falla a veces al negociar TLS
+      # en varias conexiones a la vez (bug #111759 de bugs.mysql.com).
+      TYPING_TEST_MYSQL: "Server=127.0.0.1;Port=3306;User ID=root;Password=ci_root;SslMode=Disabled"
 
     steps:
       - uses: actions/checkout@v4
