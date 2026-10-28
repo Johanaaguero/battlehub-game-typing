@@ -14,6 +14,31 @@ export interface GameModule {
     dispose(): Promise<void>;
 }
 
+/**
+ * Evento con el que el juego avisa al Shell que la partida terminó (R-46). Se emite en `window`
+ * como un CustomEvent con un GameFinishedDetail. El Shell lo recibe y notifica a Matchmaking:
+ * el juego no llama a Matchmaking.
+ */
+export const GAME_FINISHED_EVENT = 'battlehub:game-finished';
+
+export interface GameFinishedPlayer {
+    userId: string;
+    displayName: string;
+    score: number;
+    /** Puesto final: 1 es el ganador. */
+    position: number;
+}
+
+export interface GameFinishedDetail {
+    matchId: string;
+    gameType: string;
+    winnerUserId: string | null;
+    /** En orden de ranking. Vacío si este cliente no recibió el resultado (ya lo había guardado otro jugador). */
+    players: GameFinishedPlayer[];
+    /** Fecha de fin en UTC (ISO-8601 con Z). */
+    finishedAt: string | null;
+}
+
 /* =========================
    SignalR - Requests
    ========================= */
