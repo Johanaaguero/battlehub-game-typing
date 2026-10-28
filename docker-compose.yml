@@ -47,7 +47,7 @@ services:
 
   frontend:
     build:
-      context: frontend
+      context: src/frontend
       args:
         # URL de la API tal como la usa el navegador. Queda fija al construir la imagen.
         TYPING_API_URL: ${TYPING_API_URL:-http://localhost:5015}
