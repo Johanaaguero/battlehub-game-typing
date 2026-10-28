@@ -1,5 +1,6 @@
 
 import { GameModule } from '../src/game-module';
+import { GAME_FINISHED_EVENT } from '../src/game-contracts';
 import type { SignalRClient } from '../src/signalr-client';
 
 describe('práctica individual de Typing Battle', () => {
@@ -55,6 +56,19 @@ describe('práctica individual de Typing Battle', () => {
         expect(game.matchOutcome).toBe('PRÁCTICA LOCAL');
         expect(game.canType).toBe(false);
         expect(game.resultMessage).toContain('no se enviaron al servidor');
+    });
+
+    it('no avisa al Shell al terminar la práctica: no es una partida de Matchmaking', () => {
+        const listener = jest.fn();
+        window.addEventListener(GAME_FINISHED_EVENT, listener);
+        game.startPractice();
+        game.typedText = game.targetText;
+
+        game.handleTyping();
+
+        window.removeEventListener(GAME_FINISHED_EVENT, listener);
+        expect(game.matchFinished).toBe(true);
+        expect(listener).not.toHaveBeenCalled();
     });
 
     it('finaliza localmente cuando se agota el tiempo', () => {
