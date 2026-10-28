@@ -1,12 +1,14 @@
 import { customElement } from 'aurelia';
 
-import type {
-    EndMatchRequest,
-    GameContext,
-    GameModule as IGameModule,
-    JoinMatchRequest,
-    LeaveMatchRequest,
-    PlayerUpdateDto,
+import {
+    GAME_FINISHED_EVENT,
+    type EndMatchRequest,
+    type GameContext,
+    type GameFinishedDetail,
+    type GameModule as IGameModule,
+    type JoinMatchRequest,
+    type LeaveMatchRequest,
+    type PlayerUpdateDto,
 } from './game-contracts';
 
 import { RESULTS_API_URL, TYPING_HUB_URL } from './config';
@@ -136,6 +138,12 @@ export class GameModule implements IGameModule {
     public resultMessage = '';
 
     public finalResult: GameResult | null = null;
+
+    /**
+     * Evita avisar dos veces al Shell: el hub puede mandar matchEnded más de una vez
+     * (created para todos y already_exists al jugador que pidió terminar tarde).
+     */
+    private finishEventSent = false;
 
     // ---------------------------------------------------------
     // NAVEGACIÓN DE LA INTERFAZ
@@ -555,6 +563,10 @@ export class GameModule implements IGameModule {
                 this.historyLoaded = false;
 
                 this.statsLoaded = false;
+
+                this.notifyShellMatchFinished(
+                    notification.outcome
+                );
             }
         );
 
@@ -960,6 +972,8 @@ export class GameModule implements IGameModule {
 
         this.finalResult = null;
 
+        this.finishEventSent = false;
+
         this.activeSection = 'game';
 
         this.history = [];
@@ -1317,6 +1331,51 @@ export class GameModule implements IGameModule {
 
                 break;
         }
+    }
+
+    /**
+     * Avisa al Shell que la partida terminó (R-46) con un evento en window;
+     * el Shell lo comunica a Matchmaking. Solo con una partida real que el
+     * servidor ya cerró (created o already_exists): no en la práctica ni
+     * cuando el resultado fue inválido. Se emite una sola vez por partida.
+     */
+    private notifyShellMatchFinished(
+        outcome: string
+    ): void {
+        if (
+            this.isPracticeMode ||
+            this.finishEventSent ||
+            !this.context?.matchId ||
+            (outcome !== 'created' && outcome !== 'already_exists')
+        ) {
+            return;
+        }
+
+        const result = this.finalResult;
+
+        const detail: GameFinishedDetail = {
+            matchId: this.context.matchId,
+            gameType: this.context.gameType,
+            winnerUserId: result?.winnerUserId ?? null,
+            players: (result?.players ?? []).map(
+                (player, index) => ({
+                    userId: player.userId,
+                    displayName: player.displayName,
+                    score: player.score,
+                    position: index + 1,
+                })
+            ),
+            finishedAt: result?.finishedAt ?? null,
+        };
+
+        this.finishEventSent = true;
+
+        window.dispatchEvent(
+            new CustomEvent<GameFinishedDetail>(
+                GAME_FINISHED_EVENT,
+                { detail }
+            )
+        );
     }
 
     private isGameResult(
