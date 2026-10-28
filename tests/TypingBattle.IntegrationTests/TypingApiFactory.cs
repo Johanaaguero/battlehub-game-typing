@@ -17,6 +17,13 @@ public sealed class TypingApiFactory : WebApplicationFactory<Program>, IAsyncLif
 {
     public const string ServerVariable = "TYPING_TEST_MYSQL";
 
+    /// <summary>
+    /// Las fábricas se preparan de a una. Cada una crea un pool de conexiones nuevo y migra su base, y el conector
+    /// MySql.Data falla a veces cuando eso pasa en paralelo (bugs #111759 y #112582 de bugs.mysql.com).
+    /// Las pruebas siguen corriendo en paralelo: solo se serializa el arranque.
+    /// </summary>
+    private static readonly SemaphoreSlim InitializationLock = new(1, 1);
+
     public string DatabaseName { get; } = $"typing_test_{Guid.NewGuid():N}";
 
     private string ConnectionString => $"{ReadServer()};Database={DatabaseName}";
@@ -45,6 +52,7 @@ public sealed class TypingApiFactory : WebApplicationFactory<Program>, IAsyncLif
     {
         _ = ReadServer(); // falla con un mensaje claro si falta la variable, antes de intentar conectar
 
+        await InitializationLock.WaitAsync();
         try
         {
             // Crear el cliente arranca la API, que aplica las migraciones sobre la base nueva.
@@ -56,8 +64,10 @@ public sealed class TypingApiFactory : WebApplicationFactory<Program>, IAsyncLif
                 $"No se pudo preparar MySQL para las pruebas de integración. Verifique que el servidor de " +
                 $"{ServerVariable} esté levantado y que el usuario pueda crear y borrar bases.", ex);
         }
-
-        await Task.CompletedTask;
+        finally
+        {
+            InitializationLock.Release();
+        }
     }
 
     async Task IAsyncLifetime.DisposeAsync()
