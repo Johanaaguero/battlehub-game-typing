@@ -53,13 +53,13 @@ battlehub-game-typing/
 
 ## Backend: cómo correrlo localmente
 
-Requisitos: el [SDK de .NET 10](https://dotnet.microsoft.com/download) y un MySQL 8. La forma más simple de tener MySQL es Docker:
+Requisitos: el [SDK de .NET 10](https://dotnet.microsoft.com/download) y un MySQL 8. La forma más simple de tener MySQL es Docker, con el `.env` ya creado (ver [Variables de `.env`](#variables-de-env)):
 
 ```bash
 docker compose up -d mysql
 ```
 
-Eso levanta MySQL 8.4 en `localhost:3306` con la base `typing_battle` y el usuario `typing` / `typing_dev` (credenciales solo de desarrollo, que son los valores por defecto de `docker-compose.yml`). Para cambiarlas, ver [Variables de `.env`](#variables-de-env). Si prefieren un MySQL instalado en su máquina, creen esa base y ese usuario.
+Eso levanta MySQL 8.4 en el puerto `MYSQL_PORT`, con la base, el usuario y la contraseña de tu `.env`. Si prefieren un MySQL instalado en su máquina, creen esa base y ese usuario.
 
 El código y los `appsettings` no traen cadena de conexión ni orígenes de CORS: hay que definirlos como variables de entorno (ver [Configuración](#configuración-variables-de-entorno)). En PowerShell, con el MySQL de arriba:
 
@@ -93,7 +93,7 @@ El juego no tiene contacto con Auth0 (R-30). El Shell inicia la sesión del usua
 
 ### Configuración (variables de entorno)
 
-No hay valores por defecto en el código ni en los `appsettings`: todo llega por variables de entorno. Los valores de desarrollo local viven solo en `docker-compose.yml` y se documentan en `.env.example`.
+No hay valores por defecto en el código, en los `appsettings` ni en `docker-compose.yml`: todo llega por variables de entorno. Para Docker Compose salen del `.env` de cada uno, cuya plantilla es `.env.example` (ver [Variables de `.env`](#variables-de-env)).
 
 | Variable de entorno | Para qué |
 |---|---|
@@ -181,7 +181,11 @@ npm run build
 
 ## Todo con Docker Compose
 
-Para levantar MySQL, la API y el microfrontend solo con Docker, sin instalar .NET ni Node:
+Para levantar MySQL, la API y el microfrontend solo con Docker, sin instalar .NET ni Node. La primera vez, crear el `.env` desde la plantilla (en PowerShell, `Copy-Item .env.example .env`):
+
+```bash
+cp .env.example .env
+```
 
 ```bash
 docker compose up -d --build
@@ -210,20 +214,23 @@ La guía completa, con las comprobaciones, cómo actualizar, cómo borrar los da
 
 ### Variables de `.env`
 
-Docker Compose lee la configuración de un archivo `.env` en la raíz del repo, que no se versiona. Una variable que falta o está vacía toma el valor de desarrollo local del compose, así que `.env` solo hace falta para cambiar algún valor. Son los únicos valores por defecto del proyecto: el código no tiene ninguno. La plantilla es `.env.example`:
+Docker Compose lee la configuración de un archivo `.env` en la raíz del repo, que no se versiona. Es obligatorio: `docker-compose.yml` no tiene valores por defecto y, si falta una variable, se detiene con un mensaje como `required variable MYSQL_PASSWORD is missing a value`. La plantilla es `.env.example` y sus valores sirven para desarrollo local:
 
 ```bash
 cp .env.example .env
 ```
 
-| Variable | Valor de desarrollo | Para qué |
+| Variable | Valor en `.env.example` | Para qué |
 |---|---|---|
 | `MYSQL_ROOT_PASSWORD` | `typing_root` | Contraseña de `root`. La usan las pruebas de integración |
 | `MYSQL_DATABASE` | `typing_battle` | Base de datos de la API |
 | `MYSQL_USER` | `typing` | Usuario con el que se conecta la API |
 | `MYSQL_PASSWORD` | `typing_dev` | Contraseña de ese usuario |
+| `MYSQL_PORT` | `3306` | Puerto de MySQL en tu máquina |
+| `API_PORT` | `5015` | Puerto de la API en tu máquina |
 | `CORS_SHELL_ORIGIN`, `CORS_FRONTEND_ORIGIN` | `http://localhost:4000` y `http://localhost:4001` | Orígenes del navegador que pueden llamar a la API |
-| `TYPING_API_URL` | `http://localhost:5015` | URL de la API que usa el frontend. Queda fija al construir la imagen: al cambiarla, `docker compose up -d --build frontend` |
+| `FRONTEND_PORT` | `4001` | Puerto del microfrontend en tu máquina; el Shell lo busca en `http://localhost:4001/remoteEntry.js` |
+| `TYPING_API_URL` | `http://localhost:5015` | URL de la API que usa el frontend, con el puerto de `API_PORT`. Queda fija al construir la imagen: al cambiarla, `docker compose up -d --build frontend` |
 
 Al cambiar las variables de MySQL:
 

@@ -33,15 +33,15 @@ Además de gitleaks, se revisó el historial completo con git:
 
 | Valor | Dónde aparece | Para qué |
 |---|---|---|
-| `typing_dev` | `docker-compose.yml` (valor por defecto), `.env.example` y README | Usuario `typing` del MySQL local |
-| `typing_root` | `docker-compose.yml` (valor por defecto) y `.env.example` | Usuario `root` del MySQL local |
+| `typing_dev` | `.env.example` (valor de ejemplo) y README | Usuario `typing` del MySQL local |
+| `typing_root` | `.env.example` (valor de ejemplo) y README | Usuario `root` del MySQL local |
 | `ci_root` | `.github/workflows/ci.yml` | Usuario `root` del MySQL temporal del CI |
 
 Solo sirven para bases de datos locales o del CI, que no se exponen fuera de la máquina. Ningún despliegue las usa: ahí la conexión llega por `ConnectionStrings__Typing`.
 
-En el código no queda ninguna (R-09): ni en los `appsettings`, ni en las herramientas de EF, ni en las pruebas, ni en el frontend. Todo se lee de variables de entorno. Los únicos valores por defecto son los de `docker-compose.yml` (`${VARIABLE:-valor}`), para que `docker compose up` funcione desde cero (R-27, R-29).
+En el código no queda ninguna (R-09): ni en los `appsettings`, ni en las herramientas de EF, ni en las pruebas, ni en el frontend, ni en `docker-compose.yml`. Todo se lee de variables de entorno.
 
-> **Decisión por confirmar con el profesor.** Si los valores por defecto del compose cuentan como credenciales fijas (R-09), el cambio es exigir las variables con `${MYSQL_PASSWORD:?mensaje}` y similares. Entonces habría que correr `cp .env.example .env` antes de `docker compose up`, y eso choca con «el único comando es `docker compose up`» (R-29). Mientras no se confirme, se mantienen los valores por defecto.
+> **Decisión del profesor (28 de octubre de 2026): opción B.** `docker-compose.yml` no tiene valores por defecto: exige cada variable con `${VARIABLE:?falta en .env}` y se detiene si falta alguna. Antes de la primera vez hay que crear el `.env` con `cp .env.example .env`. `.env.example` es la plantilla documentada (R-32) y trae valores de ejemplo para desarrollo local.
 
 ## Reglas para no filtrar secretos
 

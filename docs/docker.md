@@ -10,9 +10,9 @@ Cómo construir, levantar y comprobar MySQL, la API y el microfrontend de Typing
 | `api` | `typing-battle-api` | `http://localhost:5015` | `src/backend/TypingBattle.Api/Dockerfile` |
 | `frontend` | `typing-battle-frontend` | `http://localhost:4001/remoteEntry.js` | `src/frontend/Dockerfile` |
 
-## 1. Preparar `.env` (opcional)
+## 1. Preparar `.env`
 
-Sin `.env`, el compose usa los valores de desarrollo y todo funciona. Solo hace falta para cambiar algún valor como las contraseñas de MySQL:
+El compose no tiene valores por defecto: sin `.env` se detiene y dice qué variable falta. La primera vez, copiar la plantilla; sus valores sirven para desarrollo local:
 
 ```powershell
 Copy-Item .env.example .env
@@ -59,10 +59,10 @@ En PowerShell, `curl` es otro comando; por eso se escribe `curl.exe`.
 3. Confirmar que el resultado quedó guardado:
 
 ```powershell
-docker exec typing-battle-mysql mysql -utyping -ptyping_dev typing_battle -e "SELECT MatchId, WinnerUserId, FinishedAt FROM game_results ORDER BY CreatedAt DESC LIMIT 3;"
+docker exec typing-battle-mysql sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" -e "SELECT MatchId, WinnerUserId, FinishedAt FROM game_results ORDER BY CreatedAt DESC LIMIT 3;"'
 ```
 
-El aviso `Using a password on the command line interface can be insecure` es normal: es la contraseña de desarrollo.
+El comando usa el usuario y la contraseña que el contenedor recibió de `.env`, así que no hace falta escribirlos. El aviso `Using a password on the command line interface can be insecure` es normal.
 
 ## 4. Ver los logs
 
@@ -112,6 +112,7 @@ La imagen de la API no lleva configuración: al ejecutarla hay que pasar al meno
 | Síntoma | Causa | Solución |
 |---|---|---|
 | `failed to connect to the docker API` | Docker Desktop no está abierto | Abrirlo y esperar a que diga *Engine running* |
+| `required variable … is missing a value` | No existe el `.env` o le falta una variable: el compose no tiene valores por defecto | `Copy-Item .env.example .env`, o agregar al `.env` la variable que nombra el error |
 | `port is already allocated` o `bind: address already in use` | `dotnet run`, `npm start` u otro MySQL ya usan el puerto 5015, 4001 o 3306 | Detenerlos. Para ver qué usa un puerto: `Get-NetTCPConnection -LocalPort 5015` |
 | `typing-battle-api` no aparece en `docker compose ps` | La API se detuvo al arrancar | Ver el error con `docker compose ps -a` y `docker compose logs api` |
 | La API se detiene con `Access denied` de MySQL después de cambiar `.env` | MySQL aplica las contraseñas solo al crear el volumen | `docker compose down -v` (borra los datos) y volver a levantar |
