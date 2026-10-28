@@ -142,8 +142,10 @@ dotnet test --filter "Category=Integration"
 Las de integración levantan la API completa contra MySQL real: cada clase crea su propia base `typing_test_…`, le aplica las migraciones y la borra al terminar. Necesitan la variable `TYPING_TEST_MYSQL`, con una cadena sin `Database` y un usuario que pueda crear y borrar bases. Con el MySQL de docker compose (`docker compose up -d mysql`), en PowerShell:
 
 ```powershell
-$env:TYPING_TEST_MYSQL = "Server=localhost;Port=3306;User ID=root;Password=<MYSQL_ROOT_PASSWORD>"
+$env:TYPING_TEST_MYSQL = "Server=localhost;Port=3306;User ID=root;Password=<MYSQL_ROOT_PASSWORD>;SslMode=Disabled"
 ```
+
+`SslMode=Disabled` evita un error intermitente del conector MySql.Data al negociar TLS en varias conexiones a la vez ([bug #111759](https://bugs.mysql.com/bug.php?id=111759)). Para un MySQL local de pruebas no hace falta TLS.
 
 ### Uso desde el hub
 
