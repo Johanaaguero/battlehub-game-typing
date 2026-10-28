@@ -112,7 +112,7 @@ La imagen de la API no lleva configuración: al ejecutarla hay que pasar al meno
 | Síntoma | Causa | Solución |
 |---|---|---|
 | `failed to connect to the docker API` | Docker Desktop no está abierto | Abrirlo y esperar a que diga *Engine running* |
-| `port is already allocated` o `bind: address already in use` | `dotnet run`, `npm start`, `Start-Integration.ps1` u otro MySQL ya usan el puerto 5015, 4001 o 3306 | Detenerlos. Para ver qué usa un puerto: `Get-NetTCPConnection -LocalPort 5015` |
+| `port is already allocated` o `bind: address already in use` | `dotnet run`, `npm start` u otro MySQL ya usan el puerto 5015, 4001 o 3306 | Detenerlos. Para ver qué usa un puerto: `Get-NetTCPConnection -LocalPort 5015` |
 | `typing-battle-api` no aparece en `docker compose ps` | La API se detuvo al arrancar | Ver el error con `docker compose ps -a` y `docker compose logs api` |
 | La API se detiene con `Access denied` de MySQL después de cambiar `.env` | MySQL aplica las contraseñas solo al crear el volumen | `docker compose down -v` (borra los datos) y volver a levantar |
 | El navegador bloquea las llamadas del juego a la API (error de CORS en la consola) | El origen del Shell no está permitido en la API | En `.env`: `CORS_SHELL_ORIGIN` con el origen del Shell; luego `docker compose up -d api` |

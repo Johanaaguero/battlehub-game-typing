@@ -15,10 +15,10 @@ Resultado de la auditoría de secretos del repo y reglas para que ningún secret
 
 | Commit | Archivo | Regla | Qué es | Decisión |
 |---|---|---|---|---|
-| `e7ff544` (en `main`) | `scripts/Start-Integration.ps1`, línea 30 | `generic-api-key` | Client ID del cliente M2M de Auth0 | Falso positivo, agregado a `.gitleaksignore` |
-| `cb83cd0` (stash local de GitHub Desktop, no está en GitHub) | `scripts/Start-Integration.ps1`, línea 30 | `generic-api-key` | El mismo Client ID | Falso positivo, agregado a `.gitleaksignore` |
+| `e7ff544` (en `main`) | `scripts/Start-Integration.ps1` (ya eliminado), línea 30 | `generic-api-key` | Client ID del cliente M2M de Auth0 | Falso positivo, agregado a `.gitleaksignore` |
+| `cb83cd0` (stash local de GitHub Desktop, no está en GitHub) | `scripts/Start-Integration.ps1` (ya eliminado), línea 30 | `generic-api-key` | El mismo Client ID | Falso positivo, agregado a `.gitleaksignore` |
 
-El Client ID no es un secreto: es un identificador público. Auth0 solo entrega un token M2M si se presenta junto con el Client Secret, y el Client Secret no está en el repo: `Start-Integration.ps1` lo pide con `Read-Host -AsSecureString` al ejecutarse. La API ya no usa ese cliente M2M (R-30, R-46).
+El Client ID no es un secreto: es un identificador público. Auth0 solo entrega un token M2M si se presenta junto con el Client Secret, y el Client Secret no está en el repo: el script `Start-Integration.ps1`, ya eliminado, lo pedía con `Read-Host -AsSecureString` al ejecutarse. La API ya no usa ese cliente M2M (R-30, R-46).
 
 ### Revisión manual complementaria
 
@@ -33,7 +33,7 @@ Además de gitleaks, se revisó el historial completo con git:
 
 | Valor | Dónde aparece | Para qué |
 |---|---|---|
-| `typing_dev` | `docker-compose.yml`, `appsettings.Development.json`, `scripts/Prepare-MySql.sql`, README y la constante `LocalDevelopmentConnectionString`, que usan las herramientas de EF Core en tiempo de diseño | Usuario `typing` del MySQL local |
+| `typing_dev` | `docker-compose.yml`, `appsettings.Development.json`, README y la constante `LocalDevelopmentConnectionString`, que usan las herramientas de EF Core en tiempo de diseño | Usuario `typing` del MySQL local |
 | `typing_root` | `docker-compose.yml` y pruebas de integración (`TypingApiFactory`) | Usuario `root` del MySQL local |
 | `ci_root` | `.github/workflows/ci.yml` | Usuario `root` del MySQL temporal del CI |
 
@@ -43,7 +43,7 @@ Solo sirven para bases de datos locales o del CI, que no se exponen fuera de la 
 
 - **Variables de entorno.** El único secreto de la API, `ConnectionStrings__Typing`, solo se configura como variable de entorno; la lista completa está en el README, en «Configuración fuera de Development».
 - **`.gitignore`.** Ignora `.env` y `.env.*` (salvo `.env.example`), `appsettings.Local.json`, claves y certificados (`*.pem`, `*.pfx`, `*.key`, `*.p12`), `docker-compose.override.yml` y los reportes de gitleaks.
-- **`.dockerignore` de la raíz** (imagen de la API). Solo entran el código de `TypingBattle.Api`, sus `appsettings` y la solución. Quedan fuera los secretos, `.git`, el CI, `bin`/`obj`, `src/frontend`, `tests`, `docs` y `scripts`.
+- **`.dockerignore` de la raíz** (imagen de la API). Solo entran el código de `TypingBattle.Api`, sus `appsettings` y la solución. Quedan fuera los secretos, `.git`, el CI, `bin`/`obj`, `src/frontend`, `tests` y `docs`.
 - **`src/frontend/.dockerignore`** (imagen del microfrontend). Solo entran `src`, la configuración de Webpack y TypeScript y los `package*.json`. Quedan fuera `node_modules`, `dist`, las pruebas, `.env` y `.npmrc`.
 - **`appsettings.Development.json`** entra en la imagen de la API, pero no tiene secretos y solo se carga con `ASPNETCORE_ENVIRONMENT=Development`.
 
