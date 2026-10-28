@@ -4,7 +4,7 @@
 # La URL de la API queda fija al compilar (TYPING_API_URL); sin ella se usa http://localhost:5015.
 
 # Etapa 1: compilar con Node.
-FROM node:24-slim AS build
+FROM node:22-slim AS build
 WORKDIR /app
 
 # Primero solo package*.json: mientras no cambien las dependencias, Docker reutiliza npm ci desde la caché.
