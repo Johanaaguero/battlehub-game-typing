@@ -43,129 +43,263 @@ function resetClient(): void {
   mockClient.disconnect.mockResolvedValue(undefined);
 }
 
+
 describe('GameModule (ciclo de vida)', () => {
-  beforeEach(() => {
-    resetClient();
-    jest.useFakeTimers();
-    jest.spyOn(console, 'log').mockImplementation(() => undefined);
-  });
+    beforeEach(() => {
+        resetClient();
+        jest.useFakeTimers();
+        jest.spyOn(console, 'log').mockImplementation(() => undefined);
+    });
 
-  afterEach(() => {
-    jest.useRealTimers();
-    jest.restoreAllMocks();
-  });
+    afterEach(() => {
+        jest.useRealTimers();
+        jest.restoreAllMocks();
+    });
 
-  async function startGame(): Promise<GameModule> {
-    const game = new GameModule();
-    await game.initialize(context);
-    await game.start();
-    return game;
-  }
+    async function startGame(): Promise<GameModule> {
+        const game = new GameModule();
+        await game.initialize(context);
+        await game.start();
+        return game;
+    }
 
-  it('rechaza start() si no puede unirse a la partida (el Shell lo muestra como LIFECYCLE_ERROR)', async () => {
-    mockClient.joinMatch.mockResolvedValue(false);
-    const game = new GameModule();
-    await game.initialize(context);
+    it('no envía métricas cuando SignalR está desconectado', async () => {
+        const game = await startGame();
+        mockClient.sendPlayerUpdate.mockClear();
+        mockClient.state = 'Disconnected';
 
-    await expect(game.start()).rejects.toThrow('No fue posible unirse a la partida');
-  });
+        game.typedText = 'La';
+        game.handleTyping();
 
-  it('no deja escribir antes de start()', async () => {
-    const game = new GameModule();
-    await game.initialize(context);
+        await Promise.resolve();
 
-    game.typedText = 'La';
-    game.handleTyping();
+        expect(mockClient.sendPlayerUpdate).not.toHaveBeenCalled();
+    });
 
-    expect(game.canType).toBe(false);
-    expect(game.progress).toBe(0);
-    expect(mockClient.sendPlayerUpdate).not.toHaveBeenCalled();
-  });
+    it('envía métricas cuando el jugador escribe y SignalR está conectado', async () => {
+        const game = await startGame();
+        mockClient.sendPlayerUpdate.mockClear();
 
-  it('el temporizador arranca con start(), sin esperar la primera tecla', async () => {
-    const game = await startGame();
+        game.typedText = 'La';
+        game.handleTyping();
 
-    await jest.advanceTimersByTimeAsync(3_000);
+        await Promise.resolve();
 
-    expect(game.timeRemaining).toBe(57);
-  });
+        expect(mockClient.sendPlayerUpdate).toHaveBeenCalled();
+    });
 
-  it('al acabarse el tiempo envía las métricas finales y pide terminar la partida una sola vez', async () => {
-    const game = await startGame();
-    game.typedText = 'La tec';
-    game.handleTyping();
+    it('registra el error si falla el envío de métricas', async () => {
+        const game = await startGame();
+        const error = new Error('Fallo de conexión');
 
-    await jest.advanceTimersByTimeAsync(60_000);
+        const consoleError = jest
+            .spyOn(console, 'error')
+            .mockImplementation(() => undefined);
 
-    expect(game.isTimeUp).toBe(true);
-    expect(mockClient.endMatch).toHaveBeenCalledTimes(1);
-    expect(mockClient.endMatch).toHaveBeenCalledWith(expect.objectContaining({
-      matchId: context.matchId,
-      currentUser: context.currentUser.id,
-      players: null,
-      startedAt: null,
-      finishedAt: null,
-      winnerUserId: null,
-    }));
+        mockClient.sendPlayerUpdate.mockRejectedValueOnce(error);
 
-    const updates = mockClient.sendPlayerUpdate.mock.invocationCallOrder;
-    expect(updates[updates.length - 1]).toBeLessThan(mockClient.endMatch.mock.invocationCallOrder[0]);
+        game.typedText = 'La';
+        game.handleTyping();
 
-    await jest.advanceTimersByTimeAsync(5_000);
-    expect(mockClient.endMatch).toHaveBeenCalledTimes(1);
-  });
+        await jest.advanceTimersByTimeAsync(0);
+        await Promise.resolve();
+        await Promise.resolve();
 
-  it('completar el texto congela la velocidad y bloquea la escritura hasta el final', async () => {
-    const game = await startGame();
-    await jest.advanceTimersByTimeAsync(10_000);
+        expect(consoleError).toHaveBeenCalledWith(
+            'No fue posible enviar las métricas del jugador:',
+            error
+        );
+    });
 
-    game.typedText = game.targetText;
-    game.handleTyping();
-    const wpmAtCompletion = game.wpm;
+    it('rechaza start() si no puede unirse a la partida', async () => {
+        mockClient.joinMatch.mockResolvedValue(false);
 
-    expect(game.completed).toBe(true);
-    expect(game.canType).toBe(false);
-    expect(wpmAtCompletion).toBeGreaterThan(0);
+        const game = new GameModule();
+        await game.initialize(context);
 
-    await jest.advanceTimersByTimeAsync(20_000);
+        await expect(game.start()).rejects.toThrow(
+            'No fue posible unirse a la partida'
+        );
+    });
 
-    expect(game.wpm).toBe(wpmAtCompletion);
-    expect(mockClient.endMatch).not.toHaveBeenCalled();
-  });
+    it('no deja escribir antes de start()', async () => {
+        const game = new GameModule();
+        await game.initialize(context);
 
-  it('pause() detiene el temporizador y start() lo reanuda donde quedó', async () => {
-    const game = await startGame();
-    await jest.advanceTimersByTimeAsync(5_000);
+        game.typedText = 'La';
+        game.handleTyping();
 
-    await game.pause();
-    await jest.advanceTimersByTimeAsync(10_000);
-    expect(game.timeRemaining).toBe(55);
+        expect(game.canType).toBe(false);
+        expect(game.progress).toBe(0);
+        expect(mockClient.sendPlayerUpdate).not.toHaveBeenCalled();
+    });
 
-    await game.start();
-    await jest.advanceTimersByTimeAsync(5_000);
-    expect(game.timeRemaining).toBe(50);
-  });
+    it('el temporizador arranca con start(), sin esperar la primera tecla', async () => {
+        const game = await startGame();
 
-  it('conserva el resultado si después le llega already_exists', async () => {
-    const game = await startGame();
-    const onMatchEnded = mockClient.onMatchEnded.mock.calls[0][0];
-    const result = {
-      matchId: context.matchId,
-      gameType: 'typing',
-      players: [{ userId: 'user-ana', displayName: 'Ana', score: 600 }],
-      startedAt: '2026-10-03T20:00:00Z',
-      finishedAt: '2026-10-03T20:01:00Z',
-      winnerUserId: 'user-ana',
-      metadata: {},
-    };
+        await jest.advanceTimersByTimeAsync(3_000);
 
-    onMatchEnded({ matchId: context.matchId, outcome: 'created', resultOrErrors: result });
-    onMatchEnded({ matchId: context.matchId, outcome: 'already_exists', resultOrErrors: { matchId: context.matchId } });
+        expect(game.timeRemaining).toBe(57);
+    });
 
-    expect(game.matchFinished).toBe(true);
-    expect(game.finalResult).toEqual(result);
-    expect(game.resultMessage).toBe('Partida finalizada correctamente.');
-  });
+    it('al acabarse el tiempo envía las métricas finales y termina la partida una sola vez', async () => {
+        const game = await startGame();
+
+        game.typedText = 'La tec';
+        game.handleTyping();
+
+        await jest.advanceTimersByTimeAsync(60_000);
+
+        expect(game.isTimeUp).toBe(true);
+        expect(mockClient.endMatch).toHaveBeenCalledTimes(1);
+        expect(mockClient.endMatch).toHaveBeenCalledWith(
+            expect.objectContaining({
+                matchId: context.matchId,
+                currentUser: context.currentUser.id,
+                players: null,
+                startedAt: null,
+                finishedAt: null,
+                winnerUserId: null,
+            })
+        );
+
+        const updates = mockClient.sendPlayerUpdate.mock.invocationCallOrder;
+        expect(updates[updates.length - 1]).toBeLessThan(
+            mockClient.endMatch.mock.invocationCallOrder[0]
+        );
+
+        await jest.advanceTimersByTimeAsync(5_000);
+        expect(mockClient.endMatch).toHaveBeenCalledTimes(1);
+    });
+
+    it('completar el texto congela la velocidad y bloquea la escritura', async () => {
+        const game = await startGame();
+
+        await jest.advanceTimersByTimeAsync(10_000);
+
+        game.typedText = game.targetText;
+        game.handleTyping();
+
+        const wpmAtCompletion = game.wpm;
+
+        expect(game.completed).toBe(true);
+        expect(game.canType).toBe(false);
+        expect(wpmAtCompletion).toBeGreaterThan(0);
+
+        await jest.advanceTimersByTimeAsync(20_000);
+
+        expect(game.wpm).toBe(wpmAtCompletion);
+        expect(mockClient.endMatch).not.toHaveBeenCalled();
+    });
+
+    it('pause() detiene el temporizador y start() lo reanuda donde quedó', async () => {
+        const game = await startGame();
+
+        await jest.advanceTimersByTimeAsync(5_000);
+        await game.pause();
+        await jest.advanceTimersByTimeAsync(10_000);
+
+        expect(game.timeRemaining).toBe(55);
+
+        await game.start();
+        await jest.advanceTimersByTimeAsync(5_000);
+
+        expect(game.timeRemaining).toBe(50);
+    });
+
+    it('conserva el resultado si después le llega already_exists', async () => {
+        const game = await startGame();
+        const onMatchEnded = mockClient.onMatchEnded.mock.calls[0][0];
+
+        const result = {
+            matchId: context.matchId,
+            gameType: 'typing',
+            players: [
+                { userId: 'user-ana', displayName: 'Ana', score: 600 },
+            ],
+            startedAt: '2026-10-03T20:00:00Z',
+            finishedAt: '2026-10-03T20:01:00Z',
+            winnerUserId: 'user-ana',
+            metadata: {},
+        };
+
+        onMatchEnded({
+            matchId: context.matchId,
+            outcome: 'created',
+            resultOrErrors: result,
+        });
+
+        onMatchEnded({
+            matchId: context.matchId,
+            outcome: 'already_exists',
+            resultOrErrors: { matchId: context.matchId },
+        });
+
+        expect(game.matchFinished).toBe(true);
+        expect(game.finalResult).toEqual(result);
+        expect(game.resultMessage).toBe(
+            'Partida finalizada correctamente.'
+        );
+    });
+
+    it('registra el error si falla la finalización de la partida', async () => {
+        const game = await startGame();
+        const error = new Error('Error del servidor');
+
+        const consoleError = jest
+            .spyOn(console, 'error')
+            .mockImplementation(() => undefined);
+
+        mockClient.endMatch.mockRejectedValueOnce(error);
+
+        game.timeRemaining = 1;
+
+        await jest.advanceTimersByTimeAsync(1_000);
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(consoleError).toHaveBeenCalledWith(
+            'Error al finalizar la partida:',
+            error
+        );
+    });
+
+    it('no vuelve a conectar ni unirse si la partida ya está en curso', async () => {
+        const game = await startGame();
+
+        await game.start();
+
+        expect(mockClient.connect).toHaveBeenCalledTimes(1);
+        expect(mockClient.joinMatch).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('GameModule (plantilla)', () => {
+    beforeEach(() => {
+        resetClient();
+        jest.spyOn(console, 'log').mockImplementation(() => undefined);
+    });
+
+    afterEach(() => {
+        jest.restoreAllMocks();
+    });
+
+    it('el componente trae su plantilla aunque aún no haya contexto', async () => {
+        const { appHost } = await createFixture(
+            '<typing-game-module></typing-game-module>',
+            {},
+            [GameModule],
+        ).started;
+
+        expect(appHost.textContent).toContain('Competitive Typing Arena');
+        expect(appHost.textContent).toContain(
+            'Esperando información de la partida'
+        );
+    });
+
+    it('el área de escritura no trae texto inicial', () => {
+        expect(template).toMatch(/<textarea[^>]*><\/textarea>/);
+    });
 });
 
 describe('GameModule (plantilla)', () => {
@@ -252,3 +386,5 @@ describe('GameModule (autenticación y URL de la API)', () => {
     expect(init.headers['X-Dev-Name']).toBe('Jos%C3%A9%20N%C3%BA%C3%B1ez');
   });
 });
+
+
