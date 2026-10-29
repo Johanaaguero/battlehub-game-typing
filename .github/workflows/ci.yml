@@ -99,6 +99,14 @@ jobs:
       - name: Unit tests
         run: npx jest --ci
 
+      - name: Publicar reporte de cobertura
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage-report
+          path: frontend/coverage/
+          if-no-files-found: error
+          retention-days: 14
+
   docker:
     name: Docker (imágenes)
     runs-on: ubuntu-latest
