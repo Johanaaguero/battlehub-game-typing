@@ -31,6 +31,12 @@ const postcssLoader = {
 module.exports = function (env, { analyze }) {
     const production = env.production || process.env.NODE_ENV === 'production';
 
+    // La URL de la API se fija al compilar y es obligatoria: sin ella el build falla en lugar de publicar un frontend roto.
+    const typingApiUrl = (process.env.TYPING_API_URL || '').trim();
+    if (!typingApiUrl) {
+        throw new Error('Falta la variable de entorno TYPING_API_URL: la URL de la API de Typing se fija al compilar el frontend.');
+    }
+
     return {
         target: 'web',
         mode: production ? 'production' : 'development',
@@ -123,10 +129,10 @@ module.exports = function (env, { analyze }) {
                 shared: sharedDeps
             }),
 
-            // URL de la API y del hub (src/config.ts). Sin la variable se usa http://localhost:5015.
+            // URL de la API y del hub (src/config.ts). Es obligatoria: no hay un valor por defecto.
             // Ejemplo: TYPING_API_URL=https://typing.mi-dominio.com npm run build
             new webpack.DefinePlugin({
-                __TYPING_API_URL__: JSON.stringify(process.env.TYPING_API_URL || '')
+                __TYPING_API_URL__: JSON.stringify(typingApiUrl)
             }),
 
             new HtmlWebpackPlugin({

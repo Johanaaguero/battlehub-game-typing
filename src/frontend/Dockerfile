@@ -1,10 +1,10 @@
-# Imagen del microfrontend de Typing Battle (remote typingGame). Se construye desde la carpeta frontend/:
-#   docker build -t typing-battle-frontend frontend
-#   docker build --build-arg TYPING_API_URL=https://typing.mi-dominio.com -t typing-battle-frontend frontend
-# La URL de la API queda fija al compilar (TYPING_API_URL); sin ella se usa http://localhost:5015.
+# Imagen del microfrontend de Typing Battle (remote typingGame). Se construye desde la raíz del repo:
+#   docker build --build-arg TYPING_API_URL=https://typing.mi-dominio.com -t typing-battle-frontend src/frontend
+# La URL de la API (TYPING_API_URL) es obligatoria y queda fija al compilar: sin ella el build falla.
+# Con docker compose la pasa el servicio frontend.
 
 # Etapa 1: compilar con Node.
-FROM node:24-slim AS build
+FROM node:22-slim AS build
 WORKDIR /app
 
 # Primero solo package*.json: mientras no cambien las dependencias, Docker reutiliza npm ci desde la caché.
@@ -14,7 +14,7 @@ RUN npm ci
 COPY . .
 # Va después de npm ci para que cambiar la URL no obligue a reinstalar las dependencias.
 # Docker la expone como variable de entorno durante el build, que es donde la lee Webpack.
-ARG TYPING_API_URL=""
+ARG TYPING_API_URL
 RUN npm run build
 
 # Etapa 2: solo los archivos estáticos, servidos por nginx; sin Node ni el código fuente.

@@ -8,11 +8,11 @@ Cómo construir, levantar y comprobar MySQL, la API y el microfrontend de Typing
 |---|---|---|---|
 | `mysql` | `typing-battle-mysql` | `localhost:3306` | `mysql:8.4` |
 | `api` | `typing-battle-api` | `http://localhost:5015` | `src/backend/TypingBattle.Api/Dockerfile` |
-| `frontend` | `typing-battle-frontend` | `http://localhost:4001/remoteEntry.js` | `frontend/Dockerfile` |
+| `frontend` | `typing-battle-frontend` | `http://localhost:4001/remoteEntry.js` | `src/frontend/Dockerfile` |
 
-## 1. Preparar `.env` (opcional)
+## 1. Preparar `.env`
 
-Sin `.env`, el compose usa los valores de desarrollo y todo funciona. Solo hace falta para cambiar algún valor o para poner un secreto, como el Client Secret del aviso a Matchmaking:
+El compose no tiene valores por defecto: sin `.env` se detiene y dice qué variable falta. La primera vez, copiar la plantilla; sus valores sirven para desarrollo local:
 
 ```powershell
 Copy-Item .env.example .env
@@ -54,15 +54,15 @@ En PowerShell, `curl` es otro comando; por eso se escribe `curl.exe`.
 
 ### Jugar una partida
 
-1. Levantar los servicios de los otros equipos, cada uno como indica el README de su repo: el Shell (con Auth0, no con su sesión simulada), Profile y Matchmaking. Los puertos están en el README de este repo, en «Integración con los otros equipos».
+1. Levantar los servicios de los otros equipos, cada uno como indica el README de su repo: el Shell, Profile y Matchmaking. Los puertos están en el README de este repo, en «Integración con los otros equipos».
 2. Abrir `http://localhost:4000`, iniciar sesión y jugar una partida de Typing hasta ver los resultados.
 3. Confirmar que el resultado quedó guardado:
 
 ```powershell
-docker exec typing-battle-mysql mysql -utyping -ptyping_dev typing_battle -e "SELECT MatchId, WinnerUserId, FinishedAt FROM game_results ORDER BY CreatedAt DESC LIMIT 3;"
+docker exec typing-battle-mysql sh -c 'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" -e "SELECT MatchId, WinnerUserId, FinishedAt FROM game_results ORDER BY CreatedAt DESC LIMIT 3;"'
 ```
 
-El aviso `Using a password on the command line interface can be insecure` es normal: es la contraseña de desarrollo.
+El comando usa el usuario y la contraseña que el contenedor recibió de `.env`, así que no hace falta escribirlos. El aviso `Using a password on the command line interface can be insecure` es normal.
 
 ## 4. Ver los logs
 
@@ -72,7 +72,7 @@ docker compose logs -f api
 
 `-f` sigue mostrando los logs nuevos; se sale con `Ctrl+C`. Para otro servicio, cambiar `api` por `mysql` o `frontend`.
 
-Al arrancar, la API muestra dos avisos de *DataProtection* sobre las claves dentro del contenedor. No afectan a la API: los JWT se validan con las claves públicas de Auth0, no con DataProtection.
+Al arrancar, la API muestra dos avisos de *DataProtection* sobre las claves dentro del contenedor. No afectan a la API, que no usa cookies ni datos protegidos.
 
 ## 5. Actualizar después de cambiar el código
 
@@ -102,19 +102,19 @@ docker build -f src/backend/TypingBattle.Api/Dockerfile -t typing-battle-api .
 ```
 
 ```powershell
-docker build --build-arg TYPING_API_URL=https://typing.mi-dominio.com -t typing-battle-frontend frontend
+docker build --build-arg TYPING_API_URL=https://typing.mi-dominio.com -t typing-battle-frontend src/frontend
 ```
 
-La imagen de la API no lleva configuración: al ejecutarla hay que pasar al menos `ConnectionStrings__Typing`, `Auth__Domain` y `Auth__Audience` (lista completa en el README, en «Configuración fuera de Development»). Las dos imágenes corren sin root: la API como el usuario `app` y nginx como `nginx`.
+La imagen de la API no lleva configuración: al ejecutarla hay que pasar al menos `ConnectionStrings__Typing` (lista completa en el README, en «Configuración (variables de entorno)»). Las dos imágenes corren sin root: la API como el usuario `app` y nginx como `nginx`.
 
 ## Problemas comunes
 
 | Síntoma | Causa | Solución |
 |---|---|---|
 | `failed to connect to the docker API` | Docker Desktop no está abierto | Abrirlo y esperar a que diga *Engine running* |
-| `port is already allocated` o `bind: address already in use` | `dotnet run`, `npm start`, `Start-Integration.ps1` u otro MySQL ya usan el puerto 5015, 4001 o 3306 | Detenerlos. Para ver qué usa un puerto: `Get-NetTCPConnection -LocalPort 5015` |
+| `required variable … is missing a value` | No existe el `.env` o le falta una variable: el compose no tiene valores por defecto | `Copy-Item .env.example .env`, o agregar al `.env` la variable que nombra el error |
+| `port is already allocated` o `bind: address already in use` | `dotnet run`, `npm start` u otro MySQL ya usan el puerto 5015, 4001 o 3306 | Detenerlos. Para ver qué usa un puerto: `Get-NetTCPConnection -LocalPort 5015` |
 | `typing-battle-api` no aparece en `docker compose ps` | La API se detuvo al arrancar | Ver el error con `docker compose ps -a` y `docker compose logs api` |
 | La API se detiene con `Access denied` de MySQL después de cambiar `.env` | MySQL aplica las contraseñas solo al crear el volumen | `docker compose down -v` (borra los datos) y volver a levantar |
-| El juego recibe `401` desde el Shell | El Shell usa su sesión simulada; la API en Docker solo acepta tokens de Auth0 | Usar el Shell con Auth0 |
-| Matchmaking no recibe el fin de la partida | `MATCHMAKING_BASE_URL` está vacío o apunta a `localhost`, que dentro del contenedor es el propio contenedor | En `.env`: `MATCHMAKING_BASE_URL=http://host.docker.internal:5211`, el Client ID y el Client Secret; luego `docker compose up -d api` |
+| El navegador bloquea las llamadas del juego a la API (error de CORS en la consola) | El origen del Shell no está permitido en la API | En `.env`: `CORS_SHELL_ORIGIN` con el origen del Shell; luego `docker compose up -d api` |
 | El juego llama a una URL de la API equivocada | `TYPING_API_URL` quedó fija al construir la imagen | `docker compose up -d --build frontend` |

@@ -11,24 +11,34 @@ namespace TypingBattle.IntegrationTests;
 /// creada con las migraciones al arrancar y eliminada al terminar.
 ///
 /// El servidor se toma de la variable de entorno <c>TYPING_TEST_MYSQL</c> (cadena sin <c>Database</c>,
-/// con un usuario que pueda crear y borrar bases). Sin ella se usa el MySQL de docker-compose.yml.
+/// con un usuario que pueda crear y borrar bases). Es obligatoria: no hay un servidor por defecto.
 /// </summary>
 public sealed class TypingApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     public const string ServerVariable = "TYPING_TEST_MYSQL";
 
-    private const string DefaultServer = "Server=localhost;Port=3306;User ID=root;Password=typing_root";
+    /// <summary>
+    /// Las fábricas se preparan de a una. Cada una crea un pool de conexiones nuevo y migra su base, y el conector
+    /// MySql.Data falla a veces cuando eso pasa en paralelo (bugs #111759 y #112582 de bugs.mysql.com).
+    /// Las pruebas siguen corriendo en paralelo: solo se serializa el arranque.
+    /// </summary>
+    private static readonly SemaphoreSlim InitializationLock = new(1, 1);
 
     public string DatabaseName { get; } = $"typing_test_{Guid.NewGuid():N}";
 
-    private string ConnectionString
+    private string ConnectionString => $"{ReadServer()};Database={DatabaseName}";
+
+    private static string ReadServer()
     {
-        get
+        var server = Environment.GetEnvironmentVariable(ServerVariable);
+        if (string.IsNullOrWhiteSpace(server))
         {
-            var server = Environment.GetEnvironmentVariable(ServerVariable);
-            server = string.IsNullOrWhiteSpace(server) ? DefaultServer : server.TrimEnd(';');
-            return $"{server};Database={DatabaseName}";
+            throw new InvalidOperationException(
+                $"Falta la variable de entorno {ServerVariable}: la cadena de conexión al servidor MySQL de las pruebas, " +
+                "sin Database y con un usuario que pueda crear y borrar bases (consulte el README, en «Pruebas»).");
         }
+
+        return server.TrimEnd(';');
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -36,12 +46,13 @@ public sealed class TypingApiFactory : WebApplicationFactory<Program>, IAsyncLif
         builder.UseEnvironment("Testing");
         builder.UseSetting("ConnectionStrings:Typing", ConnectionString);
         builder.UseSetting("Database:MigrateOnStartup", "true");
-        // Identidad de desarrollo (X-Dev-User / dev_user): las pruebas no dependen de un tenant de Auth0.
-        builder.UseSetting("Auth:Mode", "Development");
     }
 
     public async Task InitializeAsync()
     {
+        _ = ReadServer(); // falla con un mensaje claro si falta la variable, antes de intentar conectar
+
+        await InitializationLock.WaitAsync();
         try
         {
             // Crear el cliente arranca la API, que aplica las migraciones sobre la base nueva.
@@ -50,11 +61,13 @@ public sealed class TypingApiFactory : WebApplicationFactory<Program>, IAsyncLif
         catch (Exception ex)
         {
             throw new InvalidOperationException(
-                $"No se pudo preparar MySQL para las pruebas de integración. Levante el MySQL local con " +
-                $"'docker compose up -d mysql' o configure la variable de entorno {ServerVariable}.", ex);
+                $"No se pudo preparar MySQL para las pruebas de integración. Verifique que el servidor de " +
+                $"{ServerVariable} esté levantado y que el usuario pueda crear y borrar bases.", ex);
         }
-
-        await Task.CompletedTask;
+        finally
+        {
+            InitializationLock.Release();
+        }
     }
 
     async Task IAsyncLifetime.DisposeAsync()

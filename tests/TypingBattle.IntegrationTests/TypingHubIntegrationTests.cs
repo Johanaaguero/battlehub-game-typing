@@ -14,7 +14,7 @@ public class TypingHubIntegrationTests : IClassFixture<TypingApiFactory>
     public TypingHubIntegrationTests(TypingApiFactory factory)
     {
         _factory = factory;
-        _client = factory.CreateAuthenticatedClient("espectador");
+        _client = factory.CreateClient();
     }
 
     [Fact]
@@ -31,9 +31,9 @@ public class TypingHubIntegrationTests : IClassFixture<TypingApiFactory>
             store.GetOrCreate(matchId);
         }
 
-        // Cada jugador usa su propia conexión autenticada: el hub no deja actuar en nombre de otro usuario.
-        await using var connectionA = _factory.CreateHubConnection(userA);
-        await using var connectionB = _factory.CreateHubConnection(userB);
+        // Cada jugador usa su propia conexión.
+        await using var connectionA = _factory.CreateHubConnection();
+        await using var connectionB = _factory.CreateHubConnection();
 
         var joinedNotifications = new List<string>();
         var updates = new List<(string user, int? score)>();

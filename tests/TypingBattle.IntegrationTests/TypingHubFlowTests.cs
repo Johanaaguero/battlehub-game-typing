@@ -13,7 +13,7 @@ namespace TypingBattle.IntegrationTests;
 [Trait("Category", "Integration")]
 public class TypingHubFlowTests(TypingApiFactory factory) : IClassFixture<TypingApiFactory>
 {
-    private readonly HttpClient _client = factory.CreateAuthenticatedClient("espectador");
+    private readonly HttpClient _client = factory.CreateClient();
 
     [Fact]
     public async Task Partida_SinPrepararAntes_SeJuegaYSeGuardaUnaSolaVez()
@@ -76,7 +76,7 @@ public class TypingHubFlowTests(TypingApiFactory factory) : IClassFixture<Typing
 
     private async Task<HubConnection> ConnectAsync(string userId)
     {
-        var connection = factory.CreateHubConnection(userId);
+        var connection = factory.CreateHubConnection();
         await connection.StartAsync();
         return connection;
     }

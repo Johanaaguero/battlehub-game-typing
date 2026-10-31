@@ -1,6 +1,6 @@
 # API del Hub SignalR: /hubs/typing
 
-Este documento describe el contrato mínimo del hub SignalR para Typing Battle. Sigue las decisiones del profesor: Typing recibe matchId y currentUser; matchmaking es dueño de la sala; al finalizar la partida el backend persiste el resultado usando IResultsService y notifica el fin de la partida.
+Este documento describe el contrato mínimo del hub SignalR para Typing Battle. Sigue las decisiones del profesor: Typing recibe matchId y currentUser; matchmaking es dueño de la sala; al finalizar la partida el backend persiste el resultado usando IResultsService y anuncia el resultado al grupo.
 
 NOTA: Los tipos de persistencia y los DTOs de resultados ya existen en Results/ResultsDtos.cs (SaveResultRequest, PlayerResultRequest, etc.). No duplicar esos tipos: el Hub debe reutilizarlos cuando proceda.
 
@@ -52,16 +52,13 @@ Metadata para Typing
 	 "players": [ { "userId": "user-001", "wpm": 62.4, "accuracy": 96.1 }, ... ]
    }
 
-Notificación a Matchmaking
- - Requisito: al finalizar la partida, además de persistir el resultado, Typing debe notificar a Matchmaking que la partida terminó.
- - Mecanismo: callback HTTP de ADR-004 (propuesto por el Equipo 2): POST {Matchmaking:BaseUrl}/api/matches/{matchId}/finish, sin cuerpo (los resultados son solo de Typing), con un token M2M de Auth0 (client credentials) que debe traer el permiso matches.finish.
- - Implementación: MatchFinishedQueue (IMatchFinishedNotifier) encola solo las partidas recién guardadas ("created") y vuelve de inmediato, así el hub anuncia el resultado sin esperar a Matchmaking. MatchFinishedWorker envía el aviso con MatchmakingClient, que reintenta errores temporales (red, 408, 429, 5xx) y no reintenta rechazos (401, 403, 404, 409).
- - Configuración: sección Matchmaking de appsettings.json. Con BaseUrl vacía no se llama a nadie y solo queda en el log. Las credenciales M2M (Matchmaking:Auth0:Domain, ClientId, ClientSecret y Audience) van en variables de entorno o user-secrets; sin ellas el aviso viaja sin token.
- - Estado: el Matchmaking Service todavía no publica /finish (su rama feat/matchmaking-api-integration tiene la API REST, pero sin ese endpoint). Cuando exista, basta con configurar BaseUrl y las credenciales.
+Fin de la partida y Matchmaking
+ - Typing no llama a Matchmaking (R-46). Al guardar el resultado, el hub anuncia matchEnded al grupo; el microfrontend avisa al Shell con un evento y el Shell notifica a Matchmaking. El evento (battlehub:game-finished) está descrito en el README, en «Evento de fin de partida».
+ - El hub solo persiste el resultado con IResultsService. No hay colas, reintentos ni credenciales de otros servicios en la API.
 
 Seguridad y validación
- - El hub exige un usuario autenticado (política TypingPlay): un JWT de Auth0, que desde el navegador viaja en ?access_token=, o en desarrollo la identidad de ?dev_user= (solo con Auth:Mode=Development). Sin usuario, la conexión responde 401.
- - El jugador es siempre el del token (claim sub). Si el currentUser que envía el cliente no coincide, JoinMatch responde false con joinFailed { reason: "user_mismatch" }; SendPlayerUpdate responde con updateFailed por el mismo motivo.
+ - El hub no pide autenticación (R-30): el Shell inicia la sesión y le pasa el currentUser al microfrontend, que lo envía en cada petición. Si currentUser viene vacío, JoinMatch responde false con joinFailed { reason: "user_required" }; SendPlayerUpdate responde con updateFailed por el mismo motivo.
+ - El hub confía en el currentUser de la petición: no verifica que sea quien dice ser.
  - Solo un jugador que entró a la partida puede enviar métricas (si no, updateFailed { reason: "not_joined" }) o terminarla (si no, matchEnded "invalid" solo para quien lo pidió).
  - Reusar ResultValidator para validar los datos antes de persistir.
  - Limitar tamaño de metadata usando ResultValidator.MaxMetadataChars y número de jugadores con ResultValidator.MaxPlayers.
@@ -79,4 +76,4 @@ Ejemplo de mensajes del servidor al grupo
 
 Notas finales
  - No duplicar los DTOs persistentes: cuando sea necesario construir una petición de persistencia, usar SaveResultRequest y PlayerResultRequest definidos en Results/ResultsDtos.cs.
- - Este documento es la base para las implementaciones y pruebas. Las decisiones de integración con Matchmaking y el método de notificación quedan marcadas como "decisión del equipo".
+ - Este documento es la base para las implementaciones y pruebas.

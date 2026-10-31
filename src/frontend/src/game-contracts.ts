@@ -15,13 +15,28 @@ export interface GameModule {
 }
 
 /**
- * Extensiones opcionales que el Shell puede agregar al contexto (no forman
- * parte del contrato 03 §5). getAccessToken devuelve el access token de
- * Auth0 del usuario para la API y el hub del juego. Sin ella, el juego usa
- * la identidad de desarrollo, que la API solo acepta con Auth:Mode=Development.
+ * Evento con el que el juego avisa al Shell que la partida terminó (R-46). Se emite en `window`
+ * como un CustomEvent con un GameFinishedDetail. El Shell lo recibe y notifica a Matchmaking:
+ * el juego no llama a Matchmaking.
  */
-export interface GameContextExtensions {
-    getAccessToken?: () => Promise<string | null | undefined>;
+export const GAME_FINISHED_EVENT = 'battlehub:game-finished';
+
+export interface GameFinishedPlayer {
+    userId: string;
+    displayName: string;
+    score: number;
+    /** Puesto final: 1 es el ganador. */
+    position: number;
+}
+
+export interface GameFinishedDetail {
+    matchId: string;
+    gameType: string;
+    winnerUserId: string | null;
+    /** En orden de ranking. Vacío si este cliente no recibió el resultado (ya lo había guardado otro jugador). */
+    players: GameFinishedPlayer[];
+    /** Fecha de fin en UTC (ISO-8601 con Z). */
+    finishedAt: string | null;
 }
 
 /* =========================
