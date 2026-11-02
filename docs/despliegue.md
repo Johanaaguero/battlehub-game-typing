@@ -16,7 +16,7 @@ Solo la API se conecta a MySQL: la base de datos no se expone al navegador.
 
 | Servicio | Equipo | Relación con Typing | Qué hay que coordinar para desplegar |
 |---|---|---|---|
-| Shell | 3 | Carga el remote `typingGame` (ADR-003) y le entrega el contexto del juego: usuario y sala | Registrar la URL pública de `remoteEntry.js` en su configuración de remotes. Su origen público va en `Cors__AllowedOrigins` de la API |
+| Shell | 3 | Carga el remote `typingGame` y le entrega el contexto del juego: usuario y sala | Registrar la URL pública de `remoteEntry.js` en su configuración de remotes. Su origen público va en `Cors__AllowedOrigins` de la API |
 | Matchmaking | 2 | Crea las salas. Typing no lo llama: al terminar la partida, el Shell le avisa (R-46) | Nada específico de Typing |
 | Profile | 1 | El Shell lo consulta para saber qué juegos tiene habilitados el usuario. Typing no lo llama directamente | Nada específico de Typing |
 | Auth0 | 1 | Solo el Shell inicia sesión con Auth0: Typing no se conecta con Auth0 (R-30) | Registrar las URLs públicas del Shell (callbacks, logout y orígenes web) |

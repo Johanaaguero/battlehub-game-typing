@@ -34,6 +34,7 @@ battlehub-game-typing/
 ├── docs/
 │   ├── api-resultados.md              → referencia de la API REST de resultados
 │   ├── api-typing-hub.md              → contrato del hub SignalR /hubs/typing
+│   ├── despliegue.md                  → propuesta de hosting para publicar Typing (sin confirmar; el despliegue no se evalúa)
 │   ├── docker.md                      → guía para construir, levantar y comprobar los contenedores
 │   └── seguridad.md                   → auditoría de secretos y reglas para manejarlos
 ├── src/
@@ -315,7 +316,7 @@ Son las variables de la API y de las herramientas cuando se corren fuera de Dock
 
 ### Si la API se publica fuera de la máquina local
 
-Hoy el proyecto solo corre en local. Si algún día se publica, el código impone estas condiciones:
+Hoy el proyecto solo corre en local y el despliegue no se evalúa; las opciones de hosting estudiadas están en [`docs/despliegue.md`](docs/despliegue.md). Si algún día se publica, el código impone estas condiciones:
 
 - **WebSockets.** El hosting de la API debe permitirlos. SignalR puede usar Server-Sent Events o long polling si no los hay, pero con más latencia, y en un juego de velocidad se nota.
 - **HTTPS.** Si el Shell se publica con HTTPS, el microfrontend y la API también deben usarlo: el navegador bloquea las llamadas HTTP desde una página HTTPS.
