@@ -1,0 +1,14 @@
+{
+  "name": "typing-battle-data-generator",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Registra partidas de ejemplo en Typing Battle a través de su API pública (R-28).",
+  "type": "module",
+  "engines": {
+    "node": ">=22.13.0 <23"
+  },
+  "scripts": {
+    "start": "node src/main.js",
+    "test": "node --test"
+  }
+}
