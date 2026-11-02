@@ -45,5 +45,3 @@ app.MapResultsEndpoints();
 
 app.Run();
 
-// Permite que los proyectos de pruebas usen WebApplicationFactory<Program>.
-public partial class Program;

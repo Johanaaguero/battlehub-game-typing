@@ -29,7 +29,7 @@ public sealed class TypingHub : Hub
 
     public async Task<bool> JoinMatch(JoinMatchRequest request)
     {
-        if (request is null) throw new ArgumentNullException(nameof(request));
+        ArgumentNullException.ThrowIfNull(request);
 
         if (!TryGetUser(request.CurrentUser, out var userId))
         {
@@ -53,7 +53,7 @@ public sealed class TypingHub : Hub
 
     public async Task<bool> LeaveMatch(LeaveMatchRequest request)
     {
-        if (request is null) throw new ArgumentNullException(nameof(request));
+        ArgumentNullException.ThrowIfNull(request);
 
         if (!TryGetUser(request.CurrentUser, out var userId))
         {
@@ -72,7 +72,7 @@ public sealed class TypingHub : Hub
 
     public async Task<bool> SendPlayerUpdate(PlayerUpdateDto update)
     {
-        if (update is null) throw new ArgumentNullException(nameof(update));
+        ArgumentNullException.ThrowIfNull(update);
 
         if (!TryGetUser(update.CurrentUser, out var userId))
         {
@@ -101,7 +101,7 @@ public sealed class TypingHub : Hub
 
     public async Task EndMatch(EndMatchRequest request)
     {
-        if (request is null) throw new ArgumentNullException(nameof(request));
+        ArgumentNullException.ThrowIfNull(request);
 
         if (!TryGetUser(request.CurrentUser, out var userId) || !matchService.IsPlayer(request.MatchId, userId))
         {

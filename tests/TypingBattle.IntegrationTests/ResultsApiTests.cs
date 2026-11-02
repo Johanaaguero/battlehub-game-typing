@@ -228,19 +228,19 @@ public class ResultsApiTests(TypingApiFactory factory) : IClassFixture<TypingApi
         string startedAt,
         string finishedAt,
         params (string UserId, string Name, int Score, double? Wpm, double? Accuracy)[] players) => new
-    {
-        matchId,
-        gameType = "typing",
-        players = players.Select(p => new { userId = p.UserId, displayName = p.Name, score = p.Score }),
-        startedAt = DateTimeOffset.Parse(startedAt),
-        finishedAt = DateTimeOffset.Parse(finishedAt),
-        winnerUserId = players[0].UserId,
-        metadata = new
         {
-            textId = "t-07",
-            players = players
+            matchId,
+            gameType = "typing",
+            players = players.Select(p => new { userId = p.UserId, displayName = p.Name, score = p.Score }),
+            startedAt = DateTimeOffset.Parse(startedAt),
+            finishedAt = DateTimeOffset.Parse(finishedAt),
+            winnerUserId = players[0].UserId,
+            metadata = new
+            {
+                textId = "t-07",
+                players = players
                 .Where(p => p.Wpm.HasValue || p.Accuracy.HasValue)
                 .Select(p => new { userId = p.UserId, wpm = p.Wpm, accuracy = p.Accuracy }),
-        },
-    };
+            },
+        };
 }

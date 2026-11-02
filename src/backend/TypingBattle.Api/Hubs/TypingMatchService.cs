@@ -13,6 +13,7 @@ public sealed class TypingMatchService
     private readonly TypingMatchStore store;
     private readonly IResultsService resultsService;
     private readonly TimeProvider timeProvider;
+    private static readonly string[] MatchNotFoundErrors = ["Partida no encontrada."];
 
     public TypingMatchService(
         TypingMatchStore store,
@@ -89,7 +90,7 @@ public sealed class TypingMatchService
     /// </summary>
     public async Task<SaveResultOutcome> EndMatchAsync(EndMatchRequest request, CancellationToken cancellationToken = default)
     {
-        if (request is null) throw new ArgumentNullException(nameof(request));
+        ArgumentNullException.ThrowIfNull(request);
 
         if (!store.TryGet(request.MatchId, out var state))
         {
@@ -97,7 +98,7 @@ public sealed class TypingMatchService
             // Devolvemos Invalid con error sencillo.
             return new SaveResultOutcome.Invalid(new Dictionary<string, string[]>
             {
-                ["matchId"] = new[] { "Partida no encontrada." }
+                ["matchId"] = MatchNotFoundErrors
             });
         }
 
