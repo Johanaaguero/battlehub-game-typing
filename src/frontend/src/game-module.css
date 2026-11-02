@@ -1720,13 +1720,14 @@
         width: 100%;
     }
 }
+
 /* ========================================================= */
 
 /* DESKTOP COMPACTO - VIEWPORT 1366 x 768 (R-33) */
 
 /* ========================================================= */
 
-@media (min-width: 901px) and (max-height: 768px) {
+@media (width >= 901px) and (height <= 768px) {
     .typing-game::after {
         width: 420px;
         height: 420px;
