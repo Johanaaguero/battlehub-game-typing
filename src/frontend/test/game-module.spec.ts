@@ -317,3 +317,116 @@ describe('GameModule (evento de fin de partida para el Shell)', () => {
     expect(received).toEqual([]);
   });
 });
+
+describe('GameModule (R-44: práctica integrada con Shell)', () => {
+  beforeEach(() => {
+    resetClient();
+    jest.useFakeTimers();
+    jest.spyOn(console, 'log').mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+    jest.restoreAllMocks();
+  });
+
+  const shellPracticeContext: GameContext = {
+    gameType: 'typing',
+    currentUser: { id: 'shell-user-123', displayName: 'Usuario Shell' },
+  };
+
+  it('inicializa práctica desde Shell sin requerir matchId', async () => {
+    const game = new GameModule();
+    await expect(game.initialize(shellPracticeContext)).resolves.toBeUndefined();
+    expect(game.isPracticeMode).toBe(true);
+    expect(game.context).toEqual(shellPracticeContext);
+  });
+
+  it('conserva la identidad real proporcionada por Shell', async () => {
+    const game = new GameModule();
+    await game.initialize(shellPracticeContext);
+    expect(game.players[0]).toEqual(expect.objectContaining({
+      userId: 'shell-user-123',
+      displayName: 'Usuario Shell',
+    }));
+    expect(game.context?.currentUser).toEqual(shellPracticeContext.currentUser);
+  });
+
+  it('inicia la práctica sin conectar ni unirse a SignalR', async () => {
+    const game = new GameModule();
+    await game.initialize(shellPracticeContext);
+    await game.start();
+    expect(mockClient.connect).not.toHaveBeenCalled();
+    expect(mockClient.joinMatch).not.toHaveBeenCalled();
+    expect(game.timeRemaining).toBe(60);
+    await jest.advanceTimersByTimeAsync(2_000);
+    expect(game.timeRemaining).toBe(58);
+  });
+
+  it('no envía métricas, no guarda resultados ni emite el evento al finalizar práctica', async () => {
+    // jsdom no siempre expone fetch en global; se instala el mock de forma explícita.
+    const originalFetchDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'fetch');
+    const fetchMock = jest.fn().mockResolvedValue({ ok: true } as Response);
+    Object.defineProperty(globalThis, 'fetch', {
+      configurable: true,
+      writable: true,
+      value: fetchMock,
+    });
+
+    const eventSpy = jest.fn();
+    window.addEventListener(GAME_FINISHED_EVENT, eventSpy);
+
+    try {
+      const game = new GameModule();
+      await game.initialize(shellPracticeContext);
+      await game.start();
+      game.typedText = game.targetText;
+      game.handleTyping();
+      await Promise.resolve();
+
+      expect(game.matchFinished).toBe(true);
+      expect(mockClient.sendPlayerUpdate).not.toHaveBeenCalled();
+      expect(mockClient.endMatch).not.toHaveBeenCalled();
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(eventSpy).not.toHaveBeenCalled();
+    } finally {
+      window.removeEventListener(GAME_FINISHED_EVENT, eventSpy);
+
+      // Restaura exactamente el estado previo, incluso si fetch no existía.
+      if (originalFetchDescriptor) {
+        Object.defineProperty(globalThis, 'fetch', originalFetchDescriptor);
+      } else {
+        Reflect.deleteProperty(globalThis, 'fetch');
+      }
+    }
+  });
+
+  it('conserva la identidad del Shell al reiniciar una práctica integrada', async () => {
+    const game = new GameModule();
+    await game.initialize(shellPracticeContext);
+    await game.start();
+    game.typedText = game.targetText;
+    game.handleTyping();
+
+    expect(game.matchFinished).toBe(true);
+
+    game.restartPractice();
+
+    expect(game.context?.currentUser).toEqual(shellPracticeContext.currentUser);
+    expect(game.players[0]?.userId).toBe('shell-user-123');
+    expect(game.players[0]?.displayName).toBe('Usuario Shell');
+    expect(game.isPracticeMode).toBe(true);
+    expect(mockClient.connect).not.toHaveBeenCalled();
+    expect(mockClient.joinMatch).not.toHaveBeenCalled();
+  });
+
+  it('mantiene el playground independiente sin contexto del Shell', async () => {
+    const game = new GameModule();
+    game.startPractice();
+    expect(game.isPracticeMode).toBe(true);
+    expect(game.context?.matchId).toBeUndefined();
+    expect(game.context?.currentUser.id).toBe('local-practice-player');
+    expect(mockClient.connect).not.toHaveBeenCalled();
+    expect(mockClient.joinMatch).not.toHaveBeenCalled();
+  });
+});

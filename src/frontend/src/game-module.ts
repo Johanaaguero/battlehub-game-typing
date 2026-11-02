@@ -191,56 +191,36 @@ export class GameModule implements IGameModule {
     public async initialize(
         context: GameContext
     ): Promise<void> {
-        this.isPracticeMode = false;
-
-        if (!context.matchId) {
-            throw new Error(
-                'matchId es requerido'
-            );
-        }
-
         if (!context.gameType) {
-            throw new Error(
-                'gameType es requerido'
-            );
+            throw new Error('gameType es requerido');
         }
 
         if (!context.currentUser?.id) {
-            throw new Error(
-                'currentUser.id es requerido'
-            );
+            throw new Error('currentUser.id es requerido');
         }
 
+        // Sin matchId, el Shell está abriendo el juego en modo práctica.
+        // Se conserva íntegramente la identidad autenticada que entrega el Shell.
+        this.isPracticeMode = !context.matchId;
         this.context = context;
-
         this.running = false;
-
-        this.signalR = new SignalRClient(TYPING_HUB_URL);
-
+        this.stopTimer();
         this.resetGameInterface();
 
-        this.players = [
-            {
-                userId:
-                    context.currentUser.id,
+        this.players = [{
+            userId: context.currentUser.id,
+            displayName: context.currentUser.displayName,
+            score: null,
+            wpm: 0,
+            accuracy: 100,
+        }];
 
-                displayName:
-                    context.currentUser.displayName,
+        if (!this.isPracticeMode) {
+            this.signalR = new SignalRClient(TYPING_HUB_URL);
+            this.registerSignalREvents();
+        }
 
-                score: null,
-
-                wpm: 0,
-
-                accuracy: 100,
-            },
-        ];
-
-        this.registerSignalREvents();
-
-        console.log(
-            'Typing Battle inicializado:',
-            context
-        );
+        console.log('Typing Battle inicializado:', context);
     }
 
     /**
@@ -252,23 +232,34 @@ export class GameModule implements IGameModule {
             return;
         }
 
+        // No convertir una partida competitiva en práctica.
+        if (this.context?.matchId) {
+            return;
+        }
+
         this.stopTimer();
         this.isPracticeMode = true;
-        this.context = {
-            gameType: 'practice',
-            currentUser: {
-                id: 'local-practice-player',
-                displayName: 'Jugador',
-            },
-        };
+
+        // El playground independiente crea un jugador local. Si la práctica
+        // fue inicializada por el Shell, se conserva su identidad real también
+        // al reiniciar la sesión.
+        if (!this.context) {
+            this.context = {
+                gameType: 'practice',
+                currentUser: {
+                    id: 'local-practice-player',
+                    displayName: 'Jugador',
+                },
+            };
+        }
 
         this.running = false;
         this.resetGameInterface();
 
         this.players = [
             {
-                userId: 'local-practice-player',
-                displayName: 'Jugador',
+                userId: this.context.currentUser.id,
+                displayName: this.context.currentUser.displayName,
                 score: null,
                 wpm: 0,
                 accuracy: 100,

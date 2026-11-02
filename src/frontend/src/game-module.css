@@ -1720,3 +1720,133 @@
         width: 100%;
     }
 }
+
+/* ========================================================= */
+
+/* DESKTOP COMPACTO - VIEWPORT 1366 x 768 (R-33) */
+
+/* ========================================================= */
+
+@media (width >= 901px) and (height <= 768px) {
+    .typing-game::after {
+        width: 420px;
+        height: 420px;
+        right: 0;
+        top: 80px;
+    }
+
+    .typing-game {
+        padding: 1rem 1.5rem;
+    }
+
+    .typing-game-header {
+        gap: 1rem;
+        margin-bottom: 0.65rem;
+    }
+
+    .typing-game-header h1 {
+        font-size: 2.7rem;
+    }
+
+    .typing-game-subtitle {
+        margin-top: 0.25rem;
+        font-size: 0.85rem;
+    }
+
+    .typing-game-match-info {
+        margin-top: 0.5rem;
+    }
+
+    .typing-game-timer-box {
+        min-width: 130px;
+        padding: 0.55rem 0.9rem;
+    }
+
+    .typing-game-timer-value {
+        font-size: 2rem;
+    }
+
+    .typing-game-current-user {
+        margin-bottom: 0.65rem;
+        padding: 0.4rem 0.7rem;
+    }
+
+    .typing-game-tabs {
+        margin-bottom: 0.7rem;
+        padding: 0.3rem;
+    }
+
+    .typing-game-tab {
+        padding: 0.55rem 0.85rem;
+    }
+
+    .typing-game-content {
+        gap: 0.85rem;
+    }
+
+    .typing-game-typing-area {
+        padding: 1rem;
+    }
+
+    .typing-game-progress-bar {
+        height: 9px;
+        margin-top: 0.55rem;
+        margin-bottom: 0.8rem;
+    }
+
+    .typing-game-typing-stats {
+        gap: 0.55rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .typing-game-stat-box {
+        padding: 0.65rem;
+    }
+
+    .typing-game-stat-box strong {
+        font-size: 1.4rem;
+    }
+
+    .typing-game-text-card {
+        margin-bottom: 0.75rem;
+        padding: 0.75rem 0.9rem;
+    }
+
+    .typing-game-text-card p {
+        margin-top: 0.5rem;
+        font-size: 0.95rem;
+        line-height: 1.5;
+    }
+
+    .typing-game-input-card {
+        gap: 0.4rem;
+    }
+
+    .typing-game-console-top {
+        padding: 0.4rem 0.65rem;
+    }
+
+    .typing-game-input-card textarea {
+        min-height: 84px;
+        padding: 0.7rem;
+        line-height: 1.5;
+    }
+
+    .typing-game-players-panel {
+        padding: 0.85rem;
+    }
+
+    .typing-game-players-header {
+        margin-bottom: 0.55rem;
+    }
+
+    .typing-game-lobby-status {
+        margin-bottom: 0.55rem;
+        padding-bottom: 0.5rem;
+    }
+
+    .typing-game-player-card {
+        margin-bottom: 0.45rem;
+        padding: 0.65rem;
+    }
+}
