@@ -6,8 +6,8 @@ using TypingBattle.Api.Results;
 namespace TypingBattle.Api.Persistence;
 
 /// <summary>
-/// Base de datos propia de Typing Battle: MySQL con Entity Framework Core
-/// (ADR-005 de battlehub-contracts). El esquema evoluciona solo mediante migraciones (carpeta Migrations).
+/// Base de datos propia de Typing Battle: MySQL con Entity Framework Core.
+/// El esquema evoluciona solo mediante migraciones (carpeta Migrations).
 /// </summary>
 public sealed class TypingDbContext(DbContextOptions<TypingDbContext> options) : DbContext(options)
 {

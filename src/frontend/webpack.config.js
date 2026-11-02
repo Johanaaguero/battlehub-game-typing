@@ -6,10 +6,10 @@ const { ModuleFederationPlugin } = require('webpack').container;
 const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
 const Dotenv = require('dotenv-webpack');
 const TerserPlugin = require('terser-webpack-plugin');
-// ADR-003 §3: dependencias compartidas, idénticas en el Shell y en los tres juegos.
+// Dependencias compartidas, idénticas en el Shell y en los tres juegos.
 const sharedDeps = require('./mf-shared');
 
-// ADR-003 §2: nombre del remote y puerto local del Equipo 4.
+// Nombre del remote y puerto local del Equipo 4.
 const REMOTE_NAME = 'typingGame';
 const PORT = 4001;
 
@@ -62,7 +62,7 @@ module.exports = function (env, { analyze }) {
             filename: production
                 ? '[name].[contenthash].bundle.js'
                 : '[name].bundle.js',
-            // ADR-003 §8: los chunks se piden a este servidor, no al del Shell.
+            // Los chunks se piden a este servidor, no al del Shell.
             publicPath: 'auto',
             uniqueName: REMOTE_NAME
         },

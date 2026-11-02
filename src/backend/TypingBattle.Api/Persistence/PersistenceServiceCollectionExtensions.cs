@@ -7,7 +7,7 @@ public static class PersistenceServiceCollectionExtensions
 {
     public const string ConnectionStringName = "Typing";
 
-    /// <summary>Registra el <see cref="TypingDbContext"/> contra MySQL (ADR-005) y su comprobación de salud.</summary>
+    /// <summary>Registra el <see cref="TypingDbContext"/> contra MySQL y su comprobación de salud.</summary>
     public static IServiceCollection AddTypingPersistence(this IServiceCollection services, IConfiguration configuration)
     {
         var connectionString = configuration.GetConnectionString(ConnectionStringName);

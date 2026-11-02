@@ -1,9 +1,9 @@
-# Typing Battle en local: MySQL (ADR-005), la API y el microfrontend de Typing.
+# Typing Battle en local: MySQL, la API, el microfrontend de Typing y el generador de datos de ejemplo.
 # Toda la configuración sale de .env y no hay valores por defecto: si falta una variable, Compose se
 # detiene y dice cuál. Antes de la primera vez, copiar la plantilla:
 #
 #   cp .env.example .env               (PowerShell: Copy-Item .env.example .env)
-#   docker compose up -d --build       todo: MySQL, la API y el microfrontend
+#   docker compose up -d --build       todo: MySQL, la API, el microfrontend y los datos de ejemplo
 #   docker compose up -d mysql         solo MySQL, para correr las pruebas de integración
 #   docker compose down                (agregar -v para borrar también los datos)
 
@@ -56,6 +56,26 @@ services:
     # Sin depends_on: son archivos estáticos y es el navegador el que llama a la API.
     ports:
       - "${FRONTEND_PORT:?falta en .env}:8080"
+
+  # R-28: proceso aparte que registra partidas de ejemplo con POST /results de la API pública. No usa el código de la
+  # API, ni sus migraciones, ni un seed. Espera a que la API responda /health, registra las partidas y termina con
+  # código 0 (queda como Exited (0)). Los ids son fijos (demo-0001…): volver a ejecutarlo no duplica nada.
+  data-generator:
+    build:
+      context: src/data-generator
+    image: typing-battle-data-generator:local
+    container_name: typing-battle-data-generator
+    depends_on:
+      api:
+        condition: service_started
+    restart: "no"
+    environment:
+      # La API por la red interna del compose, igual que Server=mysql;Port=3306 en la cadena de conexión.
+      DATA_API_URL: http://api:8080
+      DATA_MATCHES: ${DATA_MATCHES:?falta en .env}
+      DATA_WAIT_SECONDS: ${DATA_WAIT_SECONDS:?falta en .env}
+      # Puede quedar vacía, pero la variable debe existir en .env.
+      DATA_EXTRA_PLAYERS: ${DATA_EXTRA_PLAYERS?falta en .env}
 
 volumes:
   typing-mysql-data:
