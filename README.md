@@ -1,6 +1,6 @@
 # BattleHub - Typing Battle
 
-Microservicio del Equipo 4 responsable del juego **Typing Battle** dentro de la plataforma BattleHub. Implementa los contratos de [`battlehub-contracts`](https://github.com/javiercoulon-public/battlehub-contracts), la fuente de verdad del proyecto.
+Microservicio del Equipo 4 responsable del juego **Typing Battle** dentro de la plataforma BattleHub. Sigue los contratos de [`battlehub-contracts`](https://github.com/javiercoulon-public/battlehub-contracts), la fuente de verdad del proyecto.
 
 ## Responsabilidades
 
@@ -20,20 +20,20 @@ Este servicio será responsable de:
 | Capa | Tecnología |
 |---|---|
 | Backend | .NET 10 (API REST; hub SignalR en `/hubs/typing`) |
-| Base de datos | MySQL 8 con Entity Framework Core y migraciones ([ADR-005](https://github.com/javiercoulon-public/battlehub-contracts/blob/main/adrs/ADR-005-motor-bd-juego-typing.md)) |
-| Microfrontend | Aurelia con Module Federation |
+| Base de datos | MySQL 8.4 con Entity Framework Core y migraciones (ver [Base de datos](#base-de-datos)) |
+| Microfrontend | Aurelia 2 con Module Federation (Webpack 5) y Node 22 |
 | Datos de ejemplo | Node 22 sin dependencias, como servicio aparte del compose |
+| Contenedores | Docker Compose |
 | CI | GitHub Actions |
 
 ## Estructura
 
 ```text
 battlehub-game-typing/
-├── .github/workflows/ci.yml           → pipeline de CI (build, pruebas unitarias y de integración con MySQL)
+├── .github/workflows/ci.yml           → pipeline de CI (backend, frontend, generador de datos e imágenes de Docker)
 ├── docs/
 │   ├── api-resultados.md              → referencia de la API REST de resultados
 │   ├── api-typing-hub.md              → contrato del hub SignalR /hubs/typing
-│   ├── despliegue.md                  → servicios, dependencias y estrategia de despliegue
 │   ├── docker.md                      → guía para construir, levantar y comprobar los contenedores
 │   └── seguridad.md                   → auditoría de secretos y reglas para manejarlos
 ├── src/
@@ -47,154 +47,31 @@ battlehub-game-typing/
 ├── tests/
 │   ├── TypingBattle.UnitTests/        → pruebas unitarias (Category=Unit)
 │   └── TypingBattle.IntegrationTests/ → pruebas de integración contra MySQL real (Category=Integration)
-├── docker-compose.yml                 → MySQL, API, microfrontend y datos de ejemplo en local (configuración en .env, plantilla .env.example)
+├── .env.example                       → plantilla de la configuración del compose
+├── docker-compose.yml                 → MySQL, API, microfrontend y datos de ejemplo en local (configuración en .env)
 ├── dotnet-tools.json                  → herramienta local dotnet-ef
 ├── .gitignore
 ├── README.md
 └── TypingBattle.slnx
 ```
 
-## Backend: cómo correrlo localmente
+## Cómo correrlo
 
-Requisitos: el [SDK de .NET 10](https://dotnet.microsoft.com/download) y un MySQL 8. La forma más simple de tener MySQL es Docker, con el `.env` ya creado (ver [Variables de `.env`](#variables-de-env)):
+Solo hace falta **Docker Desktop** abierto (en la barra de tareas debe decir *Engine running*) y los puertos 3306, 5015 y 4001 libres. No hay que instalar .NET ni Node. Todos los comandos se corren desde la raíz del repo.
 
-```bash
-docker compose up -d mysql
-```
-
-Eso levanta MySQL 8.4 en el puerto `MYSQL_PORT`, con la base, el usuario y la contraseña de tu `.env`. Si prefieren un MySQL instalado en su máquina, creen esa base y ese usuario.
-
-El código y los `appsettings` no traen cadena de conexión ni orígenes de CORS: hay que definirlos como variables de entorno (ver [Configuración](#configuración-variables-de-entorno)). En PowerShell, con el MySQL de arriba:
-
-```powershell
-$env:ConnectionStrings__Typing = "Server=localhost;Port=3306;Database=<MYSQL_DATABASE>;User ID=<MYSQL_USER>;Password=<MYSQL_PASSWORD>"
-$env:Cors__AllowedOrigins__0 = "<origen del Shell>"
-```
-
-```bash
-dotnet run --project src/backend/TypingBattle.Api
-```
-
-La API queda en `http://localhost:5015`. En Development aplica las migraciones pendientes al arrancar (`Database:MigrateOnStartup`). Comprobación de salud en `/health` y documento OpenAPI en `/openapi/v1.json`. Los orígenes que el navegador puede usar para llamar a la API se configuran en `Cors:AllowedOrigins`.
-
-La API no pide autenticación (ver [Identidad del jugador](#identidad-del-jugador)), así que se puede llamar directamente:
-
-```bash
-curl http://localhost:5015/api/games/typing/players/user-001/stats
-```
-
-La API completa, con ejemplos, está en [`docs/api-resultados.md`](docs/api-resultados.md).
-
-### Identidad del jugador
-
-El juego no tiene contacto con Auth0 (R-30). El Shell inicia la sesión del usuario, decide si se muestra el juego y le entrega al microfrontend el `currentUser` (`id` y `displayName`) en el contexto. Esa decisión tiene estas consecuencias:
-
-- La API y el hub no piden credenciales: no hay tokens, encabezados de identidad ni permisos.
-- El jugador es el `currentUser` que el microfrontend envía en cada petición del hub. El hub solo exige que venga informado.
-- Solo los jugadores que se unieron a una partida pueden enviar métricas o terminarla.
-- Por la misma razón, nada en la API impide que alguien con acceso a la red se haga pasar por otro jugador o registre un resultado con `POST /results`. Se acepta porque la API solo se publica detrás del Shell y dentro de la red del compose; si algún día se expusiera a internet, habría que protegerla en el borde (un proxy o una puerta de enlace) y no en el juego.
-- **Pendiente:** el Equipo 3 pide acordar cómo se protege la API y el hub antes de habilitar partidas públicas, porque `currentUser` no acredita identidad ante el servidor. La práctica no depende de esto: no usa la API ni el hub.
-
-### Configuración (variables de entorno)
-
-No hay valores por defecto en el código, en los `appsettings` ni en `docker-compose.yml`: todo llega por variables de entorno. Para Docker Compose salen del `.env` de cada uno, cuya plantilla es `.env.example` (ver [Variables de `.env`](#variables-de-env)).
-
-| Variable de entorno | Para qué |
-|---|---|
-| `ConnectionStrings__Typing` | Cadena de conexión a MySQL. Obligatoria: la API y `dotnet ef` no arrancan sin ella (en Docker la arma el compose) |
-| `Database__MigrateOnStartup` | `true` para aplicar las migraciones al arrancar (por defecto `false`) |
-| `Cors__AllowedOrigins__0`, `__1`… | Orígenes del Shell y del microfrontend que pueden llamar a la API. Sin ellos, el navegador bloquea las llamadas desde otro origen |
-| `TYPING_TEST_MYSQL` | Servidor MySQL de las pruebas de integración, sin `Database` (ver [Pruebas](#pruebas)). Obligatoria para correrlas |
-| `TYPING_API_URL` | URL de la API, fija al compilar el frontend. Obligatoria: `npm start`, `npm run build` y el build de Docker fallan sin ella |
-
-### Migraciones
-
-El esquema solo cambia con migraciones de EF Core. La herramienta `dotnet-ef` está fijada en `dotnet-tools.json`:
-
-```bash
-dotnet tool restore
-```
-
-Todos los comandos `dotnet ef` necesitan `ConnectionStrings__Typing` (ver [Configuración](#configuración-variables-de-entorno)). Crear una migración no se conecta a MySQL, así que basta una cadena sin credenciales; aplicarlas sí se conecta.
-
-Crear una migración después de cambiar las entidades o el `TypingDbContext`:
-
-```bash
-dotnet ef migrations add NombreDelCambio --project src/backend/TypingBattle.Api --output-dir Persistence/Migrations
-```
-
-Aplicarlas a la base de `ConnectionStrings__Typing`:
-
-```bash
-dotnet ef database update --project src/backend/TypingBattle.Api
-```
-
-El CI falla si el modelo cambió y falta la migración (`dotnet ef migrations has-pending-model-changes`).
-
-### Pruebas
-
-Las mismas que corre el CI:
-
-```bash
-dotnet test --filter "Category=Unit"
-```
-
-```bash
-dotnet test --filter "Category=Integration"
-```
-
-Las de integración levantan la API completa contra MySQL real: cada clase crea su propia base `typing_test_…`, le aplica las migraciones y la borra al terminar. Necesitan la variable `TYPING_TEST_MYSQL`, con una cadena sin `Database` y un usuario que pueda crear y borrar bases. Con el MySQL de docker compose (`docker compose up -d mysql`), en PowerShell:
-
-```powershell
-$env:TYPING_TEST_MYSQL = "Server=localhost;Port=3306;User ID=root;Password=<MYSQL_ROOT_PASSWORD>;SslMode=Disabled"
-```
-
-`SslMode=Disabled` evita un error intermitente del conector MySql.Data al negociar TLS en varias conexiones a la vez ([bug #111759](https://bugs.mysql.com/bug.php?id=111759)). Para un MySQL local de pruebas no hace falta TLS.
-
-### Uso desde el hub
-
-El hub `/hubs/typing` corre en el mismo proceso y guarda el resultado al terminar la partida inyectando `IResultsService` (ver [`docs/api-resultados.md`](docs/api-resultados.md#desde-el-backend-del-hub-sin-http)).
-
-## Frontend: cómo correrlo localmente
-
-Requisitos: Node 22 LTS (`src/frontend/.nvmrc`, ADR-003). Desde `src/frontend/`:
-
-```bash
-npm ci
-```
-
-```bash
-npm start
-```
-
-El remote queda en `http://localhost:4001/remoteEntry.js` para que el Shell lo cargue. Las mismas verificaciones que corre el CI:
-
-```bash
-npm test
-```
-
-```bash
-npm run build
-```
-
-`npm test` corre primero el lint (ESLint y Stylelint) y luego las pruebas de Jest.
-
-- **URL de la API.** Se fija al compilar con la variable `TYPING_API_URL`, que es obligatoria: sin ella fallan `npm start`, `npm run build` y el build de Docker. Por ejemplo, `TYPING_API_URL=https://typing.mi-dominio.com npm run build`.
-- **Identidad.** El juego no usa tokens ni habla con Auth0: manda el `currentUser` que le entrega el Shell en el contexto (ver [Identidad del jugador](#identidad-del-jugador)).
-- **Estilos.** Todas las clases llevan el prefijo `typing-game` y las variables CSS se definen en la raíz del juego (`.typing-game`), así que no alteran el layout del Shell (ADR-003 §8).
-- **Altura.** La raíz del juego toma la altura que le asigna el Shell. A 1366x768 le quedan unos 495 px en la práctica y 550 px en una partida, y entra sin scroll de página ni del juego (R-33). El historial, las estadísticas y las clasificaciones muy largas hacen scroll dentro de su propio panel.
-
-## Todo con Docker Compose
-
-Para levantar MySQL, la API, el microfrontend y los datos de ejemplo solo con Docker, sin instalar .NET ni Node. La primera vez, crear el `.env` desde la plantilla (en PowerShell, `Copy-Item .env.example .env`):
+La primera vez, crear el `.env` desde la plantilla. No se versiona y sus valores sirven para desarrollo local (en PowerShell, `Copy-Item .env.example .env`):
 
 ```bash
 cp .env.example .env
 ```
 
+Construir y levantar todo:
+
 ```bash
 docker compose up -d --build
 ```
+
+La primera vez descarga las imágenes base (.NET, Node, nginx y MySQL) y tarda unos minutos.
 
 | Servicio | Contenedor | URL local |
 |---|---|---|
@@ -203,25 +80,184 @@ docker compose up -d --build
 | `frontend` | `typing-battle-frontend` | `http://localhost:4001/remoteEntry.js` |
 | `data-generator` | `typing-battle-data-generator` | Sin puerto: registra las partidas de ejemplo y termina (`Exited (0)`) |
 
-- **Mismos puertos que `dotnet run` y `npm start`:** el Shell carga el juego sin cambiar nada, pero no se pueden correr a la vez que esos comandos.
-- **La API corre en Production:** aplica las migraciones al arrancar. No pide autenticación: el jugador es el `currentUser` que le envía el juego.
-- **Matchmaking:** la API no lo llama (R-46). El fin de la partida lo avisa el Shell.
-- `docker compose up -d mysql` sigue levantando solo MySQL, para usar `dotnet run` o correr las pruebas.
-- **Datos de ejemplo:** al terminar de arrancar la API, el servicio `data-generator` registra partidas de ejemplo (ver [Datos de ejemplo](#datos-de-ejemplo)).
+Comprobar que funciona:
+
+```bash
+docker compose ps -a
+```
+
+`typing-battle-mysql` debe aparecer como `(healthy)`, la API y el frontend como `Up`, y `typing-battle-data-generator` como `Exited (0)`: terminó bien y no se reinicia.
+
+```bash
+curl http://localhost:5015/health
+```
+
+Debe responder `Healthy`: la comprobación incluye la conexión a MySQL. Para ver los logs de un servicio (`api`, `mysql`, `frontend` o `data-generator`):
 
 ```bash
 docker compose logs -f api
 ```
 
+Detener todo:
+
 ```bash
 docker compose down
 ```
 
-La guía completa, con las comprobaciones, cómo actualizar, cómo borrar los datos y los problemas comunes, está en [`docs/docker.md`](docs/docker.md).
+- **Borrar también los datos:** `docker compose down -v` elimina el volumen de MySQL. La próxima vez que se levante, la base se crea de nuevo y se vuelven a generar los datos de ejemplo.
+- **Si falta una variable** en el `.env`, Compose se detiene y dice cuál (ver [Variables de `.env`](#variables-de-env)).
+- **La API aplica las migraciones al arrancar.** No pide autenticación: el jugador es el `currentUser` que le envía el juego (ver [Identidad del jugador](#identidad-del-jugador)).
+- La guía completa, con las comprobaciones, cómo actualizar y los problemas comunes, está en [`docs/docker.md`](docs/docker.md).
+
+### Datos de ejemplo
+
+Con la base vacía, el historial y las estadísticas no muestran nada. Por eso el compose incluye el servicio `data-generator` (R-28), un proceso aparte que **no usa el código de la API, ni sus migraciones, ni un seed**: espera a que la API responda `/health` y registra partidas de ejemplo con el mismo `POST /api/games/typing/results` que usa cualquiera. Su código está en `src/data-generator/`.
+
+- **Qué crea:** `DATA_MATCHES` partidas (30 por defecto) de 2 a 4 jugadores, con ids fijos `demo-0001`, `demo-0002`…, repartidas en las últimas semanas (una cada 17 horas aproximadamente), con wpm y precisión por jugador. Los jugadores son 8: `demo-ana`, `demo-luis`, `demo-sofia`, `demo-carlos`, `demo-maria`, `demo-diego`, `demo-valeria` y `demo-mateo`. Los datos son siempre los mismos, salvo las fechas.
+- **No duplica:** como los ids son fijos, si una partida ya existe la API responde `409` y el generador la ignora. Volver a correr `docker compose up -d` no agrega nada.
+- **Cuándo termina:** al registrar las partidas, con código 0. Queda como `Exited (0)` en `docker compose ps -a`; es lo esperado.
+- **Usuarios reales:** si el Equipo 1 comparte los ids de los usuarios de la demostración, ponlos en `DATA_EXTRA_PLAYERS` (por ejemplo `auth0|64f0c1=Ana Demo;auth0|7a91b2=Luis Demo`) para que su historial muestre datos.
+
+Para comprobarlos:
+
+```bash
+docker compose logs data-generator
+```
+
+```bash
+curl "http://localhost:5015/api/games/typing/players/demo-ana/history?limit=3"
+```
+
+## Ejemplos de la API con curl
+
+La API REST cuelga de `http://localhost:5015/api/games/typing` y no pide autenticación. Los ejemplos funcionan con el proyecto levantado (ver [Cómo correrlo](#cómo-correrlo)); en la referencia completa, [`docs/api-resultados.md`](docs/api-resultados.md), están todas las reglas de validación.
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| GET | `/health` | Estado de la API; incluye la conexión a MySQL |
+| POST | `/api/games/typing/results` | Registra el resultado de una partida finalizada |
+| GET | `/api/games/typing/results/{matchId}` | Resultado detallado de una partida |
+| GET | `/api/games/typing/players/{userId}/history` | Historial del jugador (`?limit=1..200`, por defecto 50, y `?offset=`) |
+| GET | `/api/games/typing/players/{userId}/stats` | Estadísticas agregadas del jugador |
+
+El hub SignalR `/hubs/typing` no se llama con curl: su contrato está en [`docs/api-typing-hub.md`](docs/api-typing-hub.md).
+
+**Estado de la API**
+
+```bash
+curl http://localhost:5015/health
+```
+
+**Registrar el resultado de una partida.** El orden de `players` es el ranking final (el primero es el ganador) y las fechas van en UTC con `Z`:
+
+```bash
+curl -i -X POST http://localhost:5015/api/games/typing/results \
+  -H "Content-Type: application/json" \
+  -d '{
+    "matchId": "match-001",
+    "gameType": "typing",
+    "players": [
+      { "userId": "user-001", "displayName": "Ana", "score": 850 },
+      { "userId": "user-002", "displayName": "Luis", "score": 620 }
+    ],
+    "startedAt": "2026-09-02T20:00:00Z",
+    "finishedAt": "2026-09-02T20:00:47Z",
+    "winnerUserId": "user-001",
+    "metadata": {
+      "textId": "t-07",
+      "players": [
+        { "userId": "user-001", "wpm": 62.4, "accuracy": 96.1 },
+        { "userId": "user-002", "wpm": 44.0, "accuracy": 91.5 }
+      ]
+    }
+  }'
+```
+
+Responde `201 Created` con el resultado guardado y el encabezado `Location`. Si se repite el mismo `matchId`, responde `409 Conflict`: solo se registra un resultado por partida. Si el cuerpo no es válido (por ejemplo, otro `gameType`), responde `400` con el detalle por campo:
+
+```bash
+curl -i -X POST http://localhost:5015/api/games/typing/results \
+  -H "Content-Type: application/json" \
+  -d '{ "matchId": "match-002", "gameType": "chess" }'
+```
+
+En PowerShell, `curl` es otro comando y las comillas del JSON se rompen. Guardar el cuerpo en un archivo, por ejemplo `resultado.json`, y usar `curl.exe`:
+
+```powershell
+curl.exe -i -X POST http://localhost:5015/api/games/typing/results -H "Content-Type: application/json" --data-binary "@resultado.json"
+```
+
+**Consultar el resultado de una partida**
+
+```bash
+curl http://localhost:5015/api/games/typing/results/match-001
+```
+
+Responde `200` con la misma forma del `POST`, o `404` si no existe.
+
+**Historial de un jugador**, de la partida más reciente a la más antigua, con `limit` y `offset`:
+
+```bash
+curl "http://localhost:5015/api/games/typing/players/user-001/history?limit=10&offset=0"
+```
+
+Los ids de jugador distinguen mayúsculas y minúsculas y pueden traer caracteres especiales, como `auth0|64f0c1`: en la URL hay que codificarlos (`|` es `%7C`).
+
+```bash
+curl "http://localhost:5015/api/games/typing/players/auth0%7C64f0c1/history"
+```
+
+Un jugador sin partidas devuelve `[]`.
+
+**Estadísticas de un jugador**
+
+```bash
+curl http://localhost:5015/api/games/typing/players/user-001/stats
+```
+
+Responde partidas jugadas, victorias, promedios y mejores marcas. Un jugador sin partidas devuelve ceros y `null` en los promedios, no un `404`.
+
+## Puertos
+
+| Servicio | Equipo | Puerto | URL local |
+|---|---|---|---|
+| MySQL de Typing | 4 | 3306 | `localhost:3306` |
+| API y hub de Typing | 4 | 5015 | `http://localhost:5015` (`/api/games/typing`, `/hubs/typing`) |
+| Microfrontend de Typing (remote `typingGame`) | 4 | 4001 | `http://localhost:4001/remoteEntry.js` |
+| Shell | 3 | 4000 | `http://localhost:4000` |
+| Matchmaking | 2 | 5211 | `http://localhost:5211` |
+| Profile | 1 | 5220 | `http://localhost:5220` |
+
+Los puertos de Typing se cambian en el `.env` (`MYSQL_PORT`, `API_PORT` y `FRONTEND_PORT`). El Shell busca el remote en el 4001, así que conviene no cambiar ese.
+
+## Base de datos
+
+Typing usa **MySQL 8.4** con **Entity Framework Core** (proveedor oficial `MySql.EntityFrameworkCore`). El esquema se crea y evoluciona **solo con migraciones**, que están en `src/backend/TypingBattle.Api/Persistence/Migrations`.
+
+**Por qué MySQL.** Varios jugadores guardan resultados al mismo tiempo, así que se necesita un motor que maneje accesos concurrentes y transacciones para mantener la integridad de los datos, con buena integración con .NET y EF Core. Los datos de partidas y jugadores encajan bien en un modelo relacional. Se descartaron:
+
+| Alternativa | Por qué no |
+|---|---|
+| SQLite | Tiene limitaciones de concurrencia de escritura cuando varios usuarios guardan resultados a la vez |
+| PostgreSQL | Es una alternativa válida, pero el equipo decidió usar MySQL para las necesidades del proyecto |
+| MongoDB | Es flexible, pero los datos de partidas y jugadores se manejan bien con un modelo relacional |
+
+**Qué guarda**
+
+| Tabla | Contenido |
+|---|---|
+| `game_results` | Una fila por partida: `Id` (GUID, clave), `MatchId` (único), `GameType`, `StartedAt`, `FinishedAt`, `WinnerUserId`, `PlayersCount`, `MetadataJson` (`json`) y `CreatedAt` |
+| `player_results` | Una fila por jugador y partida (único `MatchId` + `UserId`), con `Score`, `Position`, `Wpm` y `Accuracy` copiados del `metadata` para consultar en SQL. Índice por `UserId` |
+
+Las fechas son `datetime(6)` guardadas en UTC. Los ids (`MatchId`, `UserId`, `WinnerUserId`) usan la intercalación `utf8mb4_bin`, que distingue mayúsculas y minúsculas. Solo la API se conecta a MySQL: la base no se expone al navegador.
+
+## Variables de entorno
+
+No hay valores por defecto en el código, en los `appsettings` ni en `docker-compose.yml`: todo llega por variables de entorno (R-09). Ninguna credencial se versiona: el `.env` está en `.gitignore`.
 
 ### Variables de `.env`
 
-Docker Compose lee la configuración de un archivo `.env` en la raíz del repo, que no se versiona. Es obligatorio: `docker-compose.yml` no tiene valores por defecto y, si falta una variable, se detiene con un mensaje como `required variable MYSQL_PASSWORD is missing a value`. La plantilla es `.env.example` y sus valores sirven para desarrollo local:
+Docker Compose lee la configuración de un archivo `.env` en la raíz del repo. Es obligatorio: `docker-compose.yml` no tiene valores por defecto y, si falta una variable, se detiene con un mensaje como `required variable MYSQL_PASSWORD is missing a value`. La plantilla es `.env.example` y sus valores sirven para desarrollo local:
 
 ```bash
 cp .env.example .env
@@ -250,66 +286,65 @@ Al cambiar las variables de MySQL:
 - Si cambian `MYSQL_ROOT_PASSWORD`, las pruebas de integración necesitan `TYPING_TEST_MYSQL` con la contraseña nueva (ver [Pruebas](#pruebas)).
 - `dotnet run` y `dotnet ef` no leen `.env`: necesitan la variable `ConnectionStrings__Typing` con los valores de `MYSQL_DATABASE`, `MYSQL_USER` y `MYSQL_PASSWORD`.
 
-### Datos de ejemplo
+### Configuración (variables de entorno)
 
-Con la base vacía, el historial y las estadísticas no muestran nada. Por eso el compose incluye el servicio `data-generator` (R-28), un proceso aparte que **no usa el código de la API, ni sus migraciones, ni un seed**: espera a que la API responda `/health` y registra partidas de ejemplo con el mismo `POST /api/games/typing/results` que usa cualquiera. Su código está en `src/data-generator/`.
+Son las variables de la API y de las herramientas cuando se corren fuera de Docker. Con Docker Compose, el propio compose las arma a partir del `.env`.
 
-- **Qué crea:** `DATA_MATCHES` partidas (30 por defecto) de 2 a 4 jugadores, con ids fijos `demo-0001`, `demo-0002`…, repartidas en las últimas semanas (una cada 17 horas aproximadamente), con wpm y precisión por jugador. Los jugadores son 8: `demo-ana`, `demo-luis`, `demo-sofia`, `demo-carlos`, `demo-maria`, `demo-diego`, `demo-valeria` y `demo-mateo`. Los datos son siempre los mismos, salvo las fechas.
-- **No duplica:** como los ids son fijos, si una partida ya existe la API responde `409` y el generador la ignora. Volver a correr `docker compose up -d` no agrega nada.
-- **Cuándo termina:** al registrar las partidas, con código 0. Queda como `Exited (0)` en `docker compose ps`; es lo esperado.
-- **Usuarios reales:** si el Equipo 1 comparte los ids de los usuarios de la demostración, ponlos en `DATA_EXTRA_PLAYERS` (por ejemplo `auth0|64f0c1=Ana Demo;auth0|7a91b2=Luis Demo`) para que su historial muestre datos.
+| Variable de entorno | Para qué |
+|---|---|
+| `ConnectionStrings__Typing` | Cadena de conexión a MySQL. Obligatoria: la API y `dotnet ef` no arrancan sin ella (en Docker la arma el compose) |
+| `Database__MigrateOnStartup` | `true` para aplicar las migraciones al arrancar (por defecto `false`) |
+| `Cors__AllowedOrigins__0`, `__1`… | Orígenes del Shell y del microfrontend que pueden llamar a la API. Sin ellos, el navegador bloquea las llamadas desde otro origen |
+| `TYPING_TEST_MYSQL` | Servidor MySQL de las pruebas de integración, sin `Database` (ver [Pruebas](#pruebas)). Obligatoria para correrlas |
+| `TYPING_API_URL` | URL de la API, fija al compilar el frontend. Obligatoria: `npm start`, `npm run build` y el build de Docker fallan sin ella |
+| `DATA_API_URL`, `DATA_MATCHES`, `DATA_WAIT_SECONDS`, `DATA_EXTRA_PLAYERS` | Las del generador de datos. En el compose, `DATA_API_URL` es la API por la red interna (`http://api:8080`) |
 
-Para comprobar los datos:
+## Decisiones técnicas
 
-```bash
-docker compose logs data-generator
-```
+- **Microfrontend con Module Federation.** El juego es un *remote* de Webpack 5 en Aurelia 2 (`2.0.0-rc.2`, versión exacta): nombre `typingGame`, módulo `./GameModule`, puerto 4001 y punto de entrada `remoteEntry.js`. El Shell lo descarga en tiempo de ejecución, así que cambiar un juego no obliga a recompilar el Shell y cada juego se despliega por su cuenta. Aurelia se comparte como instancia única con el mismo `mf-shared.js` que el Shell y los otros juegos: un desfase de versión falla de inmediato en lugar de fallar en silencio. Se descartaron los `iframe` (dificultan el contrato visual y el ciclo de vida), Vite (la federación depende de plugins de terceros) y los juegos como paquetes del Shell (se pierde el despliegue independiente). El servidor del remote responde con CORS abierto (`Access-Control-Allow-Origin: *`), usa `publicPath: 'auto'` para que los chunks se pidan a su servidor, y las clases CSS llevan el prefijo `typing-game` para no alterar el layout del Shell.
+- **MySQL con EF Core y solo migraciones.** Ver [Base de datos](#base-de-datos).
+- **El juego no se autentica (R-30).** El Shell inicia la sesión con Auth0 y le pasa al juego el `currentUser`. Ver [Identidad del jugador](#identidad-del-jugador).
+- **El fin de la partida se avisa al Shell por un evento (R-46).** El juego no llama a Matchmaking: emite `battlehub:game-finished` y el Shell notifica. Ver [Evento de fin de partida](#evento-de-fin-de-partida).
+- **Una sola instancia de la API, con las partidas en curso en memoria (R-12).** El estado de una partida mientras se juega (quién entró, su puntaje y su temporizador) vive en memoria, en `TypingMatchStore`. Es estado de juego, no persistencia: lo que se guarda en MySQL son los resultados, al terminar. Con dos instancias, los jugadores de una misma partida podrían quedar en procesos distintos, y si la API se reinicia se pierden las partidas en curso, pero no los resultados ya guardados. Correr varias instancias requeriría un *backplane* de SignalR y guardar el estado fuera del proceso, y queda fuera del alcance del proyecto.
+- **El servidor decide el resultado.** Cada cliente pide terminar al acabarse su tiempo y el servidor arma el ranking, el ganador y los puntajes con la fórmula `wpm × precisión × 10`; el navegador no decide ganadores. El primero que termina guarda el resultado y todos lo reciben. Ver [`docs/api-typing-hub.md`](docs/api-typing-hub.md).
+- **Práctica y playground sin servicios (R-44, R-34).** La práctica integrada con el Shell no conecta con el hub, no llama a la API y no guarda nada. El playground (la página del juego sola, sin Shell) arma el mismo contexto con un jugador local.
+- **Configuración solo por variables de entorno (R-09, R-32).** Sin valores por defecto en el código ni en el compose; la plantilla documentada es `.env.example`.
+- **Datos de ejemplo en un proceso aparte (R-28).** Un servicio del compose que usa la API pública, para que no dependa del código de la API, de sus migraciones ni de un seed.
+- **Fechas en UTC**, en formato ISO-8601 con sufijo `Z`, en la API, la base y los eventos.
+- **Node 22 y .NET 10 (R-42).** Fijados en `.nvmrc`, en `engines` y en el CI.
 
-```bash
-curl "http://localhost:5015/api/games/typing/players/demo-ana/history?limit=3"
-```
+### Si la API se publica fuera de la máquina local
 
-```bash
-curl http://localhost:5015/api/games/typing/players/demo-ana/stats
-```
+Hoy el proyecto solo corre en local. Si algún día se publica, el código impone estas condiciones:
 
-Para empezar de cero, borrando también los datos de MySQL (la próxima vez que se levante, se vuelven a generar):
+- **WebSockets.** El hosting de la API debe permitirlos. SignalR puede usar Server-Sent Events o long polling si no los hay, pero con más latencia, y en un juego de velocidad se nota.
+- **HTTPS.** Si el Shell se publica con HTTPS, el microfrontend y la API también deben usarlo: el navegador bloquea las llamadas HTTP desde una página HTTPS.
+- **CORS.** El origen público del Shell va en `Cors__AllowedOrigins` de la API.
+- **La URL de la API se fija al compilar el frontend** (`TYPING_API_URL`): si cambia, hay que volver a compilar el remote. Ejemplo: `docker build --build-arg TYPING_API_URL=https://typing.mi-dominio.com -t typing-battle-frontend src/frontend`.
+- **Secretos.** `ConnectionStrings__Typing` se configura solo como variable de entorno del hosting: nunca va en el repo ni dentro de una imagen.
+- **Salud.** `GET /health` comprueba también la conexión a MySQL, y el hosting puede usarlo para saber si la API está sana.
 
-```bash
-docker compose down -v
-```
+### Identidad del jugador
 
-También se puede correr sin Docker contra una API ya levantada, con Node 22 y desde `src/data-generator/`. En PowerShell:
+El juego no tiene contacto con Auth0 (R-30). El Shell inicia la sesión del usuario, decide si se muestra el juego y le entrega al microfrontend el `currentUser` (`id` y `displayName`) en el contexto. Esa decisión tiene estas consecuencias:
 
-```powershell
-$env:DATA_API_URL = "http://localhost:5015"; $env:DATA_MATCHES = "30"; $env:DATA_WAIT_SECONDS = "60"; $env:DATA_EXTRA_PLAYERS = ""
-```
-
-```bash
-npm start
-```
-
-Las pruebas del generador (`npm test`) no necesitan la API: usan una falsa.
+- La API y el hub no piden credenciales: no hay tokens, encabezados de identidad ni permisos.
+- El jugador es el `currentUser` que el microfrontend envía en cada petición del hub. El hub solo exige que venga informado.
+- Solo los jugadores que se unieron a una partida pueden enviar métricas o terminarla.
+- Por la misma razón, nada en la API impide que alguien con acceso a la red se haga pasar por otro jugador o registre un resultado con `POST /results`. Se acepta porque la API solo se publica detrás del Shell y dentro de la red del compose; si algún día se expusiera a internet, habría que protegerla en el borde (un proxy o una puerta de enlace) y no en el juego.
+- **Pendiente:** el Equipo 3 pide acordar cómo se protege la API y el hub antes de habilitar partidas públicas, porque `currentUser` no acredita identidad ante el servidor. La práctica no depende de esto: no usa la API ni el hub.
 
 ## Integración con los otros equipos
 
-Puertos locales del proyecto:
+Los puertos de todos los servicios están en [Puertos](#puertos).
 
-| Servicio | Equipo | URL local |
-|---|---|---|
-| Shell | 3 | `http://localhost:4000` |
-| Microfrontend de Typing (remote `typingGame`) | 4 | `http://localhost:4001/remoteEntry.js` |
-| API y hub de Typing | 4 | `http://localhost:5015` (`/api/games/typing`, `/hubs/typing`) |
-| Matchmaking | 2 | `http://localhost:5211` |
-| Profile | 1 | `http://localhost:5220` |
-
-**Shell (Equipo 3).** El microfrontend sigue ADR-003: remote `typingGame`, módulo `./GameModule`, puerto 4001 y el mismo `mf-shared.js` que el Shell. Para que el Shell lo cargue, su `config/remotes.local.json` necesita esta entrada:
+**Shell (Equipo 3).** El microfrontend sigue el contrato de integración de microfrontends con Module Federation: remote `typingGame`, módulo `./GameModule`, puerto 4001 y el mismo `mf-shared.js` que el Shell. Para que el Shell lo cargue, su `config/remotes.local.json` necesita esta entrada:
 
 ```json
 "typing": { "scope": "typingGame", "url": "http://localhost:4001/remoteEntry.js", "module": "./GameModule" }
 ```
 
-Para probarlo juntos: MySQL (`docker compose up -d mysql`), la API (`dotnet run --project src/backend/TypingBattle.Api`), el remote (`npm start` en `src/frontend/`) y el Shell (`npm start` en su repo). Las tres primeras también se pueden levantar juntas con `docker compose up -d --build` (ver [Todo con Docker Compose](#todo-con-docker-compose)). La API ya permite los orígenes `http://localhost:4000` y `http://localhost:4001`.
+Para probarlo juntos: levantar Typing con `docker compose up -d --build` (ver [Cómo correrlo](#cómo-correrlo)) y el Shell con `npm start` en su repo. La API ya permite los orígenes `http://localhost:4000` y `http://localhost:4001`.
 
 El contrato está en el README y en `src/games/game-contracts.ts`, `game-events.ts` y `game-host.ts` del [PR #6 del Shell](https://github.com/KeynerMC/battlehub-shell/pull/6) (referencia `83e5401`). Typing ya lo implementa, así que necesita esa versión del Shell: la de su `main` todavía no entrega `events` ni `mode`, y `initialize()` rechaza ese contexto.
 
@@ -347,6 +382,122 @@ context.events.dispatchEvent(new CustomEvent('battlehub:game-finished', {
 - **Quién emite:** el juego solo emite el evento. Cómo se autentica el Shell con Matchmaking al notificar queda fuera de Typing.
 
 **Profile y Auth0 (Equipo 1).** Typing no se conecta con Auth0 ni con Profile (R-30). El Shell inicia la sesión con Auth0, consulta al Profile Service qué juegos tiene habilitados el usuario y solo muestra Typing si corresponde; después le pasa el `currentUser` al microfrontend.
+
+## Desarrollo (opcional)
+
+Para correr el proyecto basta `docker compose up`. Esta sección es para quien quiera cambiar el código y necesita .NET 10 o Node 22 en su máquina.
+
+### Backend
+
+Requisitos: el [SDK de .NET 10](https://dotnet.microsoft.com/download) y un MySQL 8. La forma más simple de tener MySQL es Docker, con el `.env` ya creado (ver [Variables de `.env`](#variables-de-env)):
+
+```bash
+docker compose up -d mysql
+```
+
+Eso levanta solo MySQL 8.4 en el puerto `MYSQL_PORT`, con la base, el usuario y la contraseña de tu `.env`. Si prefieren un MySQL instalado en su máquina, creen esa base y ese usuario.
+
+El código y los `appsettings` no traen cadena de conexión ni orígenes de CORS: hay que definirlos como variables de entorno (ver [Configuración](#configuración-variables-de-entorno)). En PowerShell, con el MySQL de arriba:
+
+```powershell
+$env:ConnectionStrings__Typing = "Server=localhost;Port=3306;Database=<MYSQL_DATABASE>;User ID=<MYSQL_USER>;Password=<MYSQL_PASSWORD>"
+$env:Cors__AllowedOrigins__0 = "<origen del Shell>"
+```
+
+```bash
+dotnet run --project src/backend/TypingBattle.Api
+```
+
+La API queda en `http://localhost:5015`, el mismo puerto que usa el compose: no se pueden correr a la vez. En Development aplica las migraciones pendientes al arrancar (`Database:MigrateOnStartup`). Comprobación de salud en `/health` y documento OpenAPI en `/openapi/v1.json`.
+
+El hub `/hubs/typing` corre en el mismo proceso y guarda el resultado al terminar la partida inyectando `IResultsService` (ver [`docs/api-resultados.md`](docs/api-resultados.md#desde-el-backend-del-hub-sin-http)).
+
+#### Migraciones
+
+El esquema solo cambia con migraciones de EF Core. La herramienta `dotnet-ef` está fijada en `dotnet-tools.json`:
+
+```bash
+dotnet tool restore
+```
+
+Todos los comandos `dotnet ef` necesitan `ConnectionStrings__Typing` (ver [Configuración](#configuración-variables-de-entorno)). Crear una migración no se conecta a MySQL, así que basta una cadena sin credenciales; aplicarlas sí se conecta.
+
+Crear una migración después de cambiar las entidades o el `TypingDbContext`:
+
+```bash
+dotnet ef migrations add NombreDelCambio --project src/backend/TypingBattle.Api --output-dir Persistence/Migrations
+```
+
+Aplicarlas a la base de `ConnectionStrings__Typing`:
+
+```bash
+dotnet ef database update --project src/backend/TypingBattle.Api
+```
+
+El CI falla si el modelo cambió y falta la migración (`dotnet ef migrations has-pending-model-changes`).
+
+#### Pruebas
+
+Las mismas que corre el CI:
+
+```bash
+dotnet test --filter "Category=Unit"
+```
+
+```bash
+dotnet test --filter "Category=Integration"
+```
+
+Las de integración levantan la API completa contra MySQL real: cada clase crea su propia base `typing_test_…`, le aplica las migraciones y la borra al terminar. Necesitan la variable `TYPING_TEST_MYSQL`, con una cadena sin `Database` y un usuario que pueda crear y borrar bases. Con el MySQL de docker compose (`docker compose up -d mysql`), en PowerShell:
+
+```powershell
+$env:TYPING_TEST_MYSQL = "Server=localhost;Port=3306;User ID=root;Password=<MYSQL_ROOT_PASSWORD>;SslMode=Disabled"
+```
+
+`SslMode=Disabled` evita un error intermitente del conector MySql.Data al negociar TLS en varias conexiones a la vez ([bug #111759](https://bugs.mysql.com/bug.php?id=111759)). Para un MySQL local de pruebas no hace falta TLS.
+
+### Frontend
+
+Requisitos: Node 22 LTS (`src/frontend/.nvmrc`). Desde `src/frontend/`:
+
+```bash
+npm ci
+```
+
+```bash
+npm start
+```
+
+El remote queda en `http://localhost:4001/remoteEntry.js` para que el Shell lo cargue, en el mismo puerto que usa el compose. Las mismas verificaciones que corre el CI:
+
+```bash
+npm test
+```
+
+```bash
+npm run build
+```
+
+`npm test` corre primero el lint (ESLint y Stylelint) y luego las pruebas de Jest.
+
+- **URL de la API.** Se fija al compilar con la variable `TYPING_API_URL`, que es obligatoria: sin ella fallan `npm start`, `npm run build` y el build de Docker. Por ejemplo, `TYPING_API_URL=https://typing.mi-dominio.com npm run build`.
+- **Identidad.** El juego no usa tokens ni habla con Auth0: manda el `currentUser` que le entrega el Shell en el contexto (ver [Identidad del jugador](#identidad-del-jugador)).
+- **Estilos.** Todas las clases llevan el prefijo `typing-game` y las variables CSS se definen en la raíz del juego (`.typing-game`), así que no alteran el layout del Shell.
+- **Altura.** La raíz del juego toma la altura que le asigna el Shell. A 1366x768 le quedan unos 495 px en la práctica y 550 px en una partida, y entra sin scroll de página ni del juego (R-33). El historial, las estadísticas y las clasificaciones muy largas hacen scroll dentro de su propio panel.
+
+### Generador de datos
+
+Con Node 22, desde `src/data-generator/`, y contra una API ya levantada. En PowerShell:
+
+```powershell
+$env:DATA_API_URL = "http://localhost:5015"; $env:DATA_MATCHES = "30"; $env:DATA_WAIT_SECONDS = "60"; $env:DATA_EXTRA_PLAYERS = ""
+```
+
+```bash
+npm start
+```
+
+Las pruebas (`npm test`) no necesitan la API: usan una falsa.
 
 ## Flujo de trabajo
 
