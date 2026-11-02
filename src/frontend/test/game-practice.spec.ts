@@ -60,13 +60,12 @@ describe('práctica individual de Typing Battle', () => {
 
     it('no avisa al Shell al terminar la práctica: no es una partida de Matchmaking', () => {
         const listener = jest.fn();
-        window.addEventListener(GAME_FINISHED_EVENT, listener);
         game.startPractice();
+        game.context?.events.addEventListener(GAME_FINISHED_EVENT, listener);
         game.typedText = game.targetText;
 
         game.handleTyping();
 
-        window.removeEventListener(GAME_FINISHED_EVENT, listener);
         expect(game.matchFinished).toBe(true);
         expect(listener).not.toHaveBeenCalled();
     });
@@ -107,6 +106,7 @@ describe('práctica individual de Typing Battle', () => {
                 id: 'user-shell-123',
                 displayName: 'Jugador Shell',
             },
+            events: new EventTarget(),
         });
 
         const signalR = (game as unknown as { signalR: SignalRClient }).signalR;

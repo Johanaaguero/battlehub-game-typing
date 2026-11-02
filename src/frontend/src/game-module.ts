@@ -3,8 +3,8 @@ import { customElement } from 'aurelia';
 import {
     GAME_FINISHED_EVENT,
     type EndMatchRequest,
-    type GameContext,
     type GameFinishedDetail,
+    type GameLaunchContext,
     type GameModule as IGameModule,
     type JoinMatchRequest,
     type LeaveMatchRequest,
@@ -70,11 +70,11 @@ type ActiveSection =
 
 @customElement('typing-game-module')
 export class GameModule implements IGameModule {
-    public context: GameContext | null = null;
+    public context: GameLaunchContext | null = null;
 
     /**
-     * Indica que el juego se está ejecutando localmente,
-     * sin Shell, matchId ni conexión SignalR.
+     * Práctica: la pide el Shell con mode: 'practice' o el playground
+     * con startPractice(). No usa matchId, SignalR ni la API.
      */
     public isPracticeMode = false;
 
@@ -181,6 +181,12 @@ export class GameModule implements IGameModule {
 
     private running = false;
 
+    /**
+     * start() también reanuda: evita volver a entrar a la partida
+     * si la conexión sigue abierta.
+     */
+    private joinedMatch = false;
+
     private readonly apiBaseUrl = RESULTS_API_URL;
 
     /**
@@ -189,21 +195,38 @@ export class GameModule implements IGameModule {
     private signalR = new SignalRClient(TYPING_HUB_URL);
 
     public async initialize(
-        context: GameContext
+        context: GameLaunchContext
     ): Promise<void> {
-        if (!context.gameType) {
-            throw new Error('gameType es requerido');
+        if (context.gameType !== 'typing') {
+            throw new Error('gameType debe ser typing');
         }
 
         if (!context.currentUser?.id) {
             throw new Error('currentUser.id es requerido');
         }
 
-        // Sin matchId, el Shell está abriendo el juego en modo práctica.
+        if (!context.events) {
+            throw new Error('events es requerido');
+        }
+
+        // Sin mode es una partida normal y exige su sala real:
+        // nunca se inventa un matchId ni se cae a la práctica.
+        const isPractice = context.mode === 'practice';
+        const matchId: string | undefined = context.matchId;
+
+        if (isPractice && matchId) {
+            throw new Error('Una práctica no lleva matchId');
+        }
+
+        if (!isPractice && !matchId) {
+            throw new Error('matchId es requerido para una partida normal');
+        }
+
         // Se conserva íntegramente la identidad autenticada que entrega el Shell.
-        this.isPracticeMode = !context.matchId;
+        this.isPracticeMode = isPractice;
         this.context = context;
         this.running = false;
+        this.joinedMatch = false;
         this.stopTimer();
         this.resetGameInterface();
 
@@ -245,11 +268,13 @@ export class GameModule implements IGameModule {
         // al reiniciar la sesión.
         if (!this.context) {
             this.context = {
-                gameType: 'practice',
+                mode: 'practice',
+                gameType: 'typing',
                 currentUser: {
                     id: 'local-practice-player',
                     displayName: 'Jugador',
                 },
+                events: new EventTarget(),
             };
         }
 
@@ -280,7 +305,9 @@ export class GameModule implements IGameModule {
     }
 
     public async start(): Promise<void> {
-        if (!this.context) {
+        const context = this.context;
+
+        if (!context) {
             throw new Error(
                 'El juego debe inicializarse antes de comenzar'
             );
@@ -299,32 +326,40 @@ export class GameModule implements IGameModule {
             return;
         }
 
-        if (!this.context.matchId) {
-            throw new Error('matchId es requerido para una partida integrada');
-        }
+        if (
+            !this.joinedMatch ||
+            this.signalR.state === 'Disconnected'
+        ) {
+            await this.signalR.connect();
 
-        await this.signalR.connect();
+            const joinRequest: JoinMatchRequest = {
+                matchId:
+                    context.matchId!,
 
-        const joinRequest: JoinMatchRequest = {
-            matchId:
-                this.context.matchId!,
+                currentUser:
+                    context.currentUser.id,
 
-            currentUser:
-                this.context.currentUser.id,
+                displayName:
+                    context.currentUser.displayName,
+            };
 
-            displayName:
-                this.context.currentUser.displayName,
-        };
+            const joined =
+                await this.signalR.joinMatch(
+                    joinRequest
+                );
 
-        const joined =
-            await this.signalR.joinMatch(
-                joinRequest
-            );
+            if (!joined) {
+                throw new Error(
+                    'No fue posible unirse a la partida'
+                );
+            }
 
-        if (!joined) {
-            throw new Error(
-                'No fue posible unirse a la partida'
-            );
+            // El Shell pudo cerrar el juego mientras se conectaba.
+            if (this.context !== context) {
+                return;
+            }
+
+            this.joinedMatch = true;
         }
 
         this.running = true;
@@ -339,7 +374,7 @@ export class GameModule implements IGameModule {
 
         console.log(
             'Typing Battle iniciado y unido a la partida:',
-            this.context.matchId
+            context.matchId
         );
     }
 
@@ -393,6 +428,8 @@ export class GameModule implements IGameModule {
         }
 
         this.running = false;
+
+        this.joinedMatch = false;
 
         this.context = null;
 
@@ -516,6 +553,14 @@ export class GameModule implements IGameModule {
                     'Partida finalizada:',
                     notification
                 );
+
+                // Un aviso tardío de otra partida no termina la actual.
+                if (
+                    notification.matchId !==
+                    this.context?.matchId
+                ) {
+                    return;
+                }
 
                 /*
                  * Si otro jugador terminó la partida primero,
@@ -1053,7 +1098,7 @@ export class GameModule implements IGameModule {
      * del jugador en la API.
      */
     public async loadHistory(): Promise<void> {
-        if (!this.context) {
+        if (!this.context || this.isPracticeMode) {
             return;
         }
 
@@ -1111,7 +1156,7 @@ export class GameModule implements IGameModule {
      * del jugador en la API.
      */
     public async loadStats(): Promise<void> {
-        if (!this.context) {
+        if (!this.context || this.isPracticeMode) {
             return;
         }
 
@@ -1325,10 +1370,11 @@ export class GameModule implements IGameModule {
     }
 
     /**
-     * Avisa al Shell que la partida terminó (R-46) con un evento en window;
-     * el Shell lo comunica a Matchmaking. Solo con una partida real que el
-     * servidor ya cerró (created o already_exists): no en la práctica ni
-     * cuando el resultado fue inválido. Se emite una sola vez por partida.
+     * Avisa al Shell que la partida terminó (R-46) con un evento en
+     * context.events; el Shell lo comunica a Matchmaking. Solo con una partida
+     * real que el servidor ya cerró (created o already_exists): no en la
+     * práctica ni cuando el resultado fue inválido. Se emite una sola vez por
+     * partida.
      */
     private notifyShellMatchFinished(
         outcome: string
@@ -1342,26 +1388,14 @@ export class GameModule implements IGameModule {
             return;
         }
 
-        const result = this.finalResult;
-
         const detail: GameFinishedDetail = {
             matchId: this.context.matchId,
             gameType: this.context.gameType,
-            winnerUserId: result?.winnerUserId ?? null,
-            players: (result?.players ?? []).map(
-                (player, index) => ({
-                    userId: player.userId,
-                    displayName: player.displayName,
-                    score: player.score,
-                    position: index + 1,
-                })
-            ),
-            finishedAt: result?.finishedAt ?? null,
         };
 
         this.finishEventSent = true;
 
-        window.dispatchEvent(
+        this.context.events.dispatchEvent(
             new CustomEvent<GameFinishedDetail>(
                 GAME_FINISHED_EVENT,
                 { detail }

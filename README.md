@@ -90,6 +90,7 @@ El juego no tiene contacto con Auth0 (R-30). El Shell inicia la sesión del usua
 - El jugador es el `currentUser` que el microfrontend envía en cada petición del hub. El hub solo exige que venga informado.
 - Solo los jugadores que se unieron a una partida pueden enviar métricas o terminarla.
 - Por la misma razón, nada en la API impide que alguien con acceso a la red se haga pasar por otro jugador o registre un resultado con `POST /results`. Se acepta porque la API solo se publica detrás del Shell y dentro de la red del compose; si algún día se expusiera a internet, habría que protegerla en el borde (un proxy o una puerta de enlace) y no en el juego.
+- **Pendiente:** el Equipo 3 pide acordar cómo se protege la API y el hub antes de habilitar partidas públicas, porque `currentUser` no acredita identidad ante el servidor. La práctica no depende de esto: no usa la API ni el hub.
 
 ### Configuración (variables de entorno)
 
@@ -178,6 +179,7 @@ npm run build
 - **URL de la API.** Se fija al compilar con la variable `TYPING_API_URL`, que es obligatoria: sin ella fallan `npm start`, `npm run build` y el build de Docker. Por ejemplo, `TYPING_API_URL=https://typing.mi-dominio.com npm run build`.
 - **Identidad.** El juego no usa tokens ni habla con Auth0: manda el `currentUser` que le entrega el Shell en el contexto (ver [Identidad del jugador](#identidad-del-jugador)).
 - **Estilos.** Todas las clases llevan el prefijo `typing-game` y las variables CSS se definen en la raíz del juego (`.typing-game`), así que no alteran el layout del Shell (ADR-003 §8).
+- **Altura.** La raíz del juego toma la altura que le asigna el Shell. A 1366x768 le quedan unos 495 px en la práctica y 550 px en una partida, y entra sin scroll de página ni del juego (R-33). El historial, las estadísticas y las clasificaciones muy largas hacen scroll dentro de su propio panel.
 
 ## Todo con Docker Compose
 
@@ -258,27 +260,38 @@ Puertos locales del proyecto:
 
 Para probarlo juntos: MySQL (`docker compose up -d mysql`), la API (`dotnet run --project src/backend/TypingBattle.Api`), el remote (`npm start` en `src/frontend/`) y el Shell (`npm start` en su repo). Las tres primeras también se pueden levantar juntas con `docker compose up -d --build` (ver [Todo con Docker Compose](#todo-con-docker-compose)). La API ya permite los orígenes `http://localhost:4000` y `http://localhost:4001`.
 
+El contrato está en el README y en `src/games/game-contracts.ts`, `game-events.ts` y `game-host.ts` del [PR #6 del Shell](https://github.com/KeynerMC/battlehub-shell/pull/6) (referencia `83e5401`). Typing ya lo implementa, así que necesita esa versión del Shell: la de su `main` todavía no entrega `events` ni `mode`, y `initialize()` rechaza ese contexto.
+
+#### Contexto que entrega el Shell
+
+| Campo | Partida normal | Práctica |
+|---|---|---|
+| `gameType` | `typing` | `typing` |
+| `currentUser` | `{ id, displayName }` | `{ id, displayName }` |
+| `events` | `EventTarget` propio de la partida | `EventTarget` propio de la práctica |
+| `matchId` | Id real de la sala | No existe |
+| `mode` | No existe | `practice` |
+
+`initialize()` rechaza un contexto con otro `gameType`, sin usuario, sin `events`, sin `mode` ni `matchId`, o con `mode: 'practice'` y `matchId`. El juego nunca inventa un `matchId` ni recibe tokens.
+
+- **Práctica (R-44):** no conecta con SignalR ni llama a la API, no guarda nada y no emite el fin de partida. Permite escribir, ver el resultado local, volver a jugar, pausar y reanudar.
+- **Playground (R-34):** sin Shell, el botón «Iniciar práctica» de la página del juego arma el mismo contexto de práctica con un jugador local.
+- **Ciclo de vida:** el Shell llama a `initialize()` y luego a `start()`; el juego no escucha `battlehub:game-start`. `start()` también reanuda: no vuelve a conectar ni a unirse si la conexión sigue abierta, ni duplica el temporizador. `dispose()` detiene el temporizador y cierra la conexión.
+
 **Matchmaking (Equipo 2).** Typing no llama a Matchmaking (R-46). Al terminar la partida, el juego avisa al Shell con un evento y el Shell notifica a Matchmaking; la API solo guarda el resultado en MySQL.
 
 #### Evento de fin de partida
 
-El microfrontend emite en `window` un `CustomEvent` llamado `battlehub:game-finished` cuando el servidor cierra una partida real (el contrato está en `src/frontend/src/game-contracts.ts`). El Shell lo escucha y notifica a Matchmaking:
+El microfrontend emite en `context.events` un `CustomEvent` llamado `battlehub:game-finished` cuando el servidor cierra una partida normal (el contrato está en `src/frontend/src/game-contracts.ts`). El Shell lo escucha y notifica a Matchmaking:
 
 ```ts
-window.addEventListener('battlehub:game-finished', (event) => {
-    const { matchId, gameType, winnerUserId, players, finishedAt } = (event as CustomEvent).detail;
-    // notificar a Matchmaking el fin de la partida `matchId`
-});
+context.events.dispatchEvent(new CustomEvent('battlehub:game-finished', {
+    detail: { matchId: context.matchId, gameType: context.gameType },
+}));
 ```
 
-| Campo de `detail` | Contenido |
-|---|---|
-| `matchId`, `gameType` | Los del contexto que el Shell entregó al juego |
-| `winnerUserId` | Ganador de la partida (`null` si este cliente no recibió el resultado) |
-| `players` | `{ userId, displayName, score, position }` en orden de ranking; vacío si este cliente no recibió el resultado |
-| `finishedAt` | Fin de la partida en UTC (ISO-8601 con `Z`); `null` si no recibió el resultado |
-
-- **Cuándo se emite:** una sola vez por partida, cuando el hub responde `created` o `already_exists`. No se emite en el modo práctica ni si el resultado fue inválido o hubo un error.
+- **Cuándo se emite:** una sola vez por partida, cuando el hub responde `created` o `already_exists`. No se emite en la práctica, ni al salir del juego antes de terminar, ni si el resultado fue inválido o hubo un error.
+- **Qué lleva:** solo `matchId` y `gameType`. El ganador y los puntajes se quedan en la API de Typing; compartirlos con el Shell requiere acordarlo antes con el Equipo 3.
 - **Una vez por jugador:** cada jugador tiene su propio navegador y su propio Shell, así que cada uno recibe el evento de la misma partida. El Shell (o Matchmaking) debe tolerar el aviso repetido de un mismo `matchId`.
 - **Quién emite:** el juego solo emite el evento. Cómo se autentica el Shell con Matchmaking al notificar queda fuera de Typing.
 
