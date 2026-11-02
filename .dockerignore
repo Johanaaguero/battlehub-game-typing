@@ -30,6 +30,7 @@
 
 # Partes del repo que la imagen de la API no necesita
 src/frontend
+src/data-generator
 tests
 docs
 **/*.md

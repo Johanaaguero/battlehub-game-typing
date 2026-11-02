@@ -1,12 +1,13 @@
 # CI del Equipo 4 (Typing Battle).
 # Implementa 05-cicd-testing-commits.md de battlehub-contracts: en cada PR hacia main (y en cada
-# push a main) corren tres jobs, porque el repositorio tiene la API (.NET 10), el microfrontend (Aurelia)
-# y sus imágenes de Docker:
+# push a main) corren cuatro jobs, porque el repositorio tiene la API (.NET 10), el microfrontend (Aurelia),
+# el generador de datos de ejemplo (Node) y sus imágenes de Docker:
 # - Backend: restore, build, migraciones al día, pruebas unitarias y de integración contra un MySQL 8.4
 #   real (ADR-005), levantado como servicio.
 # - Frontend: install, lint, build y pruebas, con Node 22 desde src/frontend/.nvmrc (ADR-003).
-# - Docker: construye las imágenes de la API y del frontend, sin publicarlas, para detectar si un cambio
-#   rompe un Dockerfile.
+# - Generador de datos: pruebas con el ejecutor de Node 22 (src/data-generator, sin dependencias que instalar).
+# - Docker: construye las imágenes de la API, del frontend y del generador, sin publicarlas, para detectar si un
+#   cambio rompe un Dockerfile.
 #
 # No agregar filtros "paths:" a los triggers: si un check obligatorio no se ejecuta,
 # el PR queda esperándolo indefinidamente.
@@ -107,6 +108,25 @@ jobs:
       - name: Unit tests
         run: npx jest --ci
 
+  data-generator:
+    name: Generador de datos (Node 22)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: src/data-generator
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node (src/data-generator/.nvmrc)
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: src/data-generator/.nvmrc
+
+      - name: Unit tests
+        run: npm test
+
   docker:
     name: Docker (imágenes)
     runs-on: ubuntu-latest
@@ -120,3 +140,6 @@ jobs:
 
       - name: Imagen del frontend
         run: docker build --build-arg TYPING_API_URL=http://localhost:5015 -t typing-battle-frontend:ci src/frontend
+
+      - name: Imagen del generador de datos
+        run: docker build -t typing-battle-data-generator:ci src/data-generator
