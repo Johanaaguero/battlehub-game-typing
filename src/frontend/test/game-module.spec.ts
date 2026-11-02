@@ -1,6 +1,11 @@
 import { createFixture } from '@aurelia/testing';
 import { GameModule } from '../src/game-module';
-import { GAME_FINISHED_EVENT, type GameContext, type GameFinishedDetail } from '../src/game-contracts';
+import {
+  GAME_FINISHED_EVENT,
+  type GameContext,
+  type GameFinishedDetail,
+  type PracticeContext,
+} from '../src/game-contracts';
 import { RESULTS_API_URL, TYPING_HUB_URL } from '../src/config';
 import { SignalRClient } from '../src/signalr-client';
 import template from '../src/game-module.html';
@@ -31,6 +36,7 @@ const context: GameContext = {
   matchId: 'match-test-001',
   gameType: 'typing',
   currentUser: { id: 'user-ana', displayName: 'Ana' },
+  events: new EventTarget(),
 };
 
 function resetClient(): void {
@@ -263,11 +269,11 @@ describe('GameModule (evento de fin de partida para el Shell)', () => {
     jest.useFakeTimers();
     jest.spyOn(console, 'log').mockImplementation(() => undefined);
     received = [];
-    window.addEventListener(GAME_FINISHED_EVENT, listener);
+    context.events.addEventListener(GAME_FINISHED_EVENT, listener);
   });
 
   afterEach(() => {
-    window.removeEventListener(GAME_FINISHED_EVENT, listener);
+    context.events.removeEventListener(GAME_FINISHED_EVENT, listener);
     jest.useRealTimers();
     jest.restoreAllMocks();
   });
@@ -279,34 +285,21 @@ describe('GameModule (evento de fin de partida para el Shell)', () => {
     return mockClient.onMatchEnded.mock.calls[0][0];
   }
 
-  it('avisa al Shell una sola vez, con el resultado y el ranking de la partida', async () => {
+  it('avisa al Shell una sola vez, con los datos de la partida', async () => {
     const onMatchEnded = await startGame();
 
     onMatchEnded({ matchId: context.matchId, outcome: 'created', resultOrErrors: result });
     onMatchEnded({ matchId: context.matchId, outcome: 'already_exists', resultOrErrors: { matchId: context.matchId } });
 
-    expect(received).toEqual([
-      {
-        matchId: 'match-test-001',
-        gameType: 'typing',
-        winnerUserId: 'user-ana',
-        players: [
-          { userId: 'user-ana', displayName: 'Ana', score: 600, position: 1 },
-          { userId: 'user-luis', displayName: 'Luis', score: 360, position: 2 },
-        ],
-        finishedAt: '2026-10-03T20:01:00Z',
-      },
-    ]);
+    expect(received).toEqual([{ matchId: 'match-test-001', gameType: 'typing' }]);
   });
 
-  it('avisa solo con los datos de la partida si únicamente le llega already_exists', async () => {
+  it('también avisa si únicamente le llega already_exists', async () => {
     const onMatchEnded = await startGame();
 
     onMatchEnded({ matchId: context.matchId, outcome: 'already_exists', resultOrErrors: { matchId: context.matchId } });
 
-    expect(received).toEqual([
-      { matchId: 'match-test-001', gameType: 'typing', winnerUserId: null, players: [], finishedAt: null },
-    ]);
+    expect(received).toEqual([{ matchId: 'match-test-001', gameType: 'typing' }]);
   });
 
   it.each(['invalid', 'error'])('no avisa si la partida no se pudo guardar (%s)', async (outcome) => {
@@ -330,9 +323,11 @@ describe('GameModule (R-44: práctica integrada con Shell)', () => {
     jest.restoreAllMocks();
   });
 
-  const shellPracticeContext: GameContext = {
+  const shellPracticeContext: PracticeContext = {
+    mode: 'practice',
     gameType: 'typing',
     currentUser: { id: 'shell-user-123', displayName: 'Usuario Shell' },
+    events: new EventTarget(),
   };
 
   it('inicializa práctica desde Shell sin requerir matchId', async () => {
@@ -374,7 +369,7 @@ describe('GameModule (R-44: práctica integrada con Shell)', () => {
     });
 
     const eventSpy = jest.fn();
-    window.addEventListener(GAME_FINISHED_EVENT, eventSpy);
+    shellPracticeContext.events.addEventListener(GAME_FINISHED_EVENT, eventSpy);
 
     try {
       const game = new GameModule();
@@ -390,7 +385,7 @@ describe('GameModule (R-44: práctica integrada con Shell)', () => {
       expect(fetchMock).not.toHaveBeenCalled();
       expect(eventSpy).not.toHaveBeenCalled();
     } finally {
-      window.removeEventListener(GAME_FINISHED_EVENT, eventSpy);
+      shellPracticeContext.events.removeEventListener(GAME_FINISHED_EVENT, eventSpy);
 
       // Restaura exactamente el estado previo, incluso si fetch no existía.
       if (originalFetchDescriptor) {
