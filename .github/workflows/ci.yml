@@ -3,8 +3,8 @@
 # push a main) corren cuatro jobs, porque el repositorio tiene la API (.NET 10), el microfrontend (Aurelia),
 # el generador de datos de ejemplo (Node) y sus imágenes de Docker:
 # - Backend: restore, build, migraciones al día, pruebas unitarias y de integración contra un MySQL 8.4
-#   real (ADR-005), levantado como servicio.
-# - Frontend: install, lint, build y pruebas, con Node 22 desde src/frontend/.nvmrc (ADR-003).
+#   real, levantado como servicio.
+# - Frontend: install, lint, build y pruebas, con Node 22 desde src/frontend/.nvmrc.
 # - Generador de datos: pruebas con el ejecutor de Node 22 (src/data-generator, sin dependencias que instalar).
 # - Docker: construye las imágenes de la API, del frontend y del generador, sin publicarlas, para detectar si un
 #   cambio rompe un Dockerfile.

@@ -147,11 +147,11 @@ Es libre por contrato. La API solo **lee** `players[].userId`, `wpm` y `accuracy
 
 ## Persistencia
 
-MySQL 8 con Entity Framework Core (proveedor oficial `MySql.EntityFrameworkCore`), según [ADR-005](https://github.com/javiercoulon-public/battlehub-contracts/blob/main/adrs/ADR-005-motor-bd-juego-typing.md). El esquema se crea y evoluciona **solo con migraciones** (`src/backend/TypingBattle.Api/Persistence/Migrations`).
+MySQL 8.4 con Entity Framework Core (proveedor oficial `MySql.EntityFrameworkCore`); el README explica por qué se eligió, en [Base de datos](../README.md#base-de-datos). El esquema se crea y evoluciona **solo con migraciones** (`src/backend/TypingBattle.Api/Persistence/Migrations`).
 
 | Tabla | Contenido |
 |---|---|
-| `game_results` | Una fila por partida. Clave `MatchId`. `StartedAt`, `FinishedAt`, `WinnerUserId`, `PlayersCount`, `MetadataJson` (`json`) y `CreatedAt` |
+| `game_results` | Una fila por partida. Clave `Id` (GUID) y `MatchId` único. `GameType`, `StartedAt`, `FinishedAt`, `WinnerUserId`, `PlayersCount`, `MetadataJson` (`json`) y `CreatedAt` |
 | `player_results` | Una fila por jugador y partida (único `MatchId` + `UserId`), con `Score`, `Position`, `Wpm` y `Accuracy` copiados del `metadata` para consultar en SQL. Índice por `UserId` |
 
 Las fechas son `datetime(6)` guardadas en UTC. Los ids (`MatchId`, `UserId`, `WinnerUserId`) usan la intercalación `utf8mb4_bin`, que distingue mayúsculas y minúsculas.

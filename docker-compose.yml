@@ -1,4 +1,4 @@
-# Typing Battle en local: MySQL (ADR-005), la API, el microfrontend de Typing y el generador de datos de ejemplo.
+# Typing Battle en local: MySQL, la API, el microfrontend de Typing y el generador de datos de ejemplo.
 # Toda la configuración sale de .env y no hay valores por defecto: si falta una variable, Compose se
 # detiene y dice cuál. Antes de la primera vez, copiar la plantilla:
 #

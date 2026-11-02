@@ -14,7 +14,7 @@ typing-game-module {
 }
 
 .typing-game {
-    /* Variables del juego: definidas en su raíz para no afectar al Shell (ADR-003 §8). */
+    /* Variables del juego: definidas en su raíz para no afectar al Shell. */
     --arena-bg: #050817;
     --arena-bg-secondary: #090e22;
     --arena-panel: rgb(12 19 44 / 90%);
