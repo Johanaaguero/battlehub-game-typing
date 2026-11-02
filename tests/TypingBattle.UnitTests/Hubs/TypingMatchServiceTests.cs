@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using TypingBattle.Api.Hubs;
 using TypingBattle.Api.Results;
 
@@ -7,6 +7,8 @@ namespace TypingBattle.UnitTests.Hubs;
 [Trait("Category", "Unit")]
 public class TypingMatchServiceTests
 {
+    private static readonly string[] InvalidPlayerErrors = ["error"];
+
     private static TimeProvider UtcTimeProvider() => TimeProvider.System;
 
     private static TypingMatchStore CreateStoreWithMatch(string matchId)
@@ -35,14 +37,31 @@ public class TypingMatchServiceTests
             }
 
             // Default: return Created echoing back a simple GameResultDto
-            var players = request.Players!.Select(p => new PlayerResultDto(p.UserId, p.DisplayName ?? string.Empty, p.Score ?? 0)).ToList();
-            var dto = new GameResultDto(request.MatchId!, request.GameType!, players, request.StartedAt!.Value, request.FinishedAt!.Value, request.WinnerUserId, request.Metadata ?? JsonDocument.Parse("{}").RootElement);
+            if (request.Players is not { } requestedPlayers)
+            {
+                throw new InvalidOperationException("The fake results service received a request without players.");
+            }
+
+            var players = requestedPlayers.Select(p => p is null
+                ? throw new InvalidOperationException("The fake results service received a null player.")
+                : p.UserId is not { } userId
+                    ? throw new InvalidOperationException("The fake results service received a player without a user id.")
+                    : new PlayerResultDto(userId, p.DisplayName ?? string.Empty, p.Score ?? 0)).ToList();
+            var dto = new GameResultDto(
+                request.MatchId ?? throw new InvalidOperationException("The fake results service received a request without a match id."),
+                request.GameType ?? throw new InvalidOperationException("The fake results service received a request without a game type."),
+                players,
+                request.StartedAt ?? throw new InvalidOperationException("The fake results service received a request without a start time."),
+                request.FinishedAt ?? throw new InvalidOperationException("The fake results service received a request without a finish time."),
+                request.WinnerUserId,
+                request.Metadata ?? JsonDocument.Parse("{}").RootElement);
             return Task.FromResult<SaveResultOutcome>(new SaveResultOutcome.Created(dto));
         }
 
         public Task<GameResultDto?> GetAsync(string matchId, CancellationToken cancellationToken = default) => Task.FromResult<GameResultDto?>(null);
         public Task<IReadOnlyList<PlayerHistoryItemDto>> GetHistoryAsync(string userId, int? limit = null, int? offset = null, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<PlayerHistoryItemDto>>(Array.Empty<PlayerHistoryItemDto>());
-        public Task<PlayerStatsDto> GetStatsAsync(string userId, CancellationToken cancellationToken = default) => Task.FromResult(new PlayerStatsDto(userId,0,0,0,0,0,null,null,null,null));
+        public Task<PlayerStatsDto> GetStatsAsync(string userId, CancellationToken cancellationToken = default) =>
+            Task.FromResult(new PlayerStatsDto(userId, 0, 0, 0, 0, 0, null, null, null, null));
     }
 
     [Fact]
@@ -252,7 +271,14 @@ public class TypingMatchServiceTests
         state.GetOrCreatePlayer("u1").UpdateMetrics(10, null, null);
 
         // Prepare fake to return Created then AlreadyExists
-        var createdDto = new GameResultDto("m-5", ResultValidator.GameType, new List<PlayerResultDto> { new PlayerResultDto("u1","u1",10)}, DateTime.UtcNow, DateTime.UtcNow, "u1", JsonDocument.Parse("{}").RootElement);
+        var createdDto = new GameResultDto(
+            "m-5",
+            ResultValidator.GameType,
+            [new PlayerResultDto("u1", "u1", 10)],
+            DateTime.UtcNow,
+            DateTime.UtcNow,
+            "u1",
+            JsonDocument.Parse("{}").RootElement);
         var fake = new FakeResultsService(new SaveResultOutcome.Created(createdDto), new SaveResultOutcome.AlreadyExists("m-5"));
         var svc = new TypingMatchService(store, fake, UtcTimeProvider());
 
@@ -271,7 +297,7 @@ public class TypingMatchServiceTests
         var state = store.GetOrCreate("m-6");
         state.GetOrCreatePlayer("u1").UpdateMetrics(1, null, null);
 
-        var invalid = new SaveResultOutcome.Invalid(new Dictionary<string, string[]> { ["players"] = new[] { "error" } });
+        var invalid = new SaveResultOutcome.Invalid(new Dictionary<string, string[]> { ["players"] = InvalidPlayerErrors });
         var fake = new FakeResultsService(invalid);
         var svc = new TypingMatchService(store, fake, UtcTimeProvider());
 
