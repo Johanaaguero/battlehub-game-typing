@@ -1,6 +1,6 @@
 # Typing Battle con Docker
 
-Cómo construir, levantar y comprobar MySQL, la API y el microfrontend de Typing con Docker Compose, sin instalar .NET ni Node.
+Cómo construir, levantar y comprobar MySQL, la API, el microfrontend de Typing y el generador de datos de ejemplo con Docker Compose, sin instalar .NET ni Node.
 
 **Requisitos:** Docker Desktop abierto (en la barra de tareas debe decir *Engine running*) y los puertos 3306, 5015 y 4001 libres. Todos los comandos se corren desde la raíz del repo.
 
@@ -9,6 +9,7 @@ Cómo construir, levantar y comprobar MySQL, la API y el microfrontend de Typing
 | `mysql` | `typing-battle-mysql` | `localhost:3306` | `mysql:8.4` |
 | `api` | `typing-battle-api` | `http://localhost:5015` | `src/backend/TypingBattle.Api/Dockerfile` |
 | `frontend` | `typing-battle-frontend` | `http://localhost:4001/remoteEntry.js` | `src/frontend/Dockerfile` |
+| `data-generator` | `typing-battle-data-generator` | Sin puerto: termina al registrar los datos | `src/data-generator/Dockerfile` |
 
 ## 1. Preparar `.env`
 
@@ -28,7 +29,7 @@ docker compose up -d --build
 
 La primera vez descarga las imágenes base (.NET, Node, nginx y MySQL) y las dependencias, así que tarda unos minutos. Después usa la caché y tarda segundos.
 
-Compose arranca MySQL y espera a que esté *healthy* antes de iniciar la API, porque la API aplica las migraciones al arrancar. El frontend no depende de los otros servicios: son archivos estáticos.
+Compose arranca MySQL y espera a que esté *healthy* antes de iniciar la API, porque la API aplica las migraciones al arrancar. El frontend no depende de los otros servicios: son archivos estáticos. El generador de datos arranca después de la API, espera a que responda `/health` y registra las partidas de ejemplo.
 
 ## 3. Comprobar que funciona
 
@@ -36,7 +37,7 @@ Compose arranca MySQL y espera a que esté *healthy* antes de iniciar la API, po
 docker compose ps
 ```
 
-`typing-battle-mysql` debe aparecer como `(healthy)` y los otros dos como `Up`.
+`typing-battle-mysql` debe aparecer como `(healthy)`, la API y el frontend como `Up`, y `typing-battle-data-generator` como `Exited (0)`: terminó bien y no se reinicia. `docker compose ps -a` muestra también los contenedores que ya terminaron.
 
 ```powershell
 curl.exe -i http://localhost:5015/health
@@ -51,6 +52,20 @@ curl.exe -I http://localhost:4001/remoteEntry.js
 Debe responder `200 OK`, con `Access-Control-Allow-Origin: *` y `Cache-Control: no-cache`.
 
 En PowerShell, `curl` es otro comando; por eso se escribe `curl.exe`.
+
+### Datos de ejemplo
+
+```powershell
+docker compose logs data-generator
+```
+
+Debe terminar con `Datos de ejemplo: 30 partidas nuevas, 0 ya existían, 0 con error.` (la primera vez; después, `0 partidas nuevas, 30 ya existían`).
+
+```powershell
+curl.exe "http://localhost:5015/api/games/typing/players/demo-ana/history?limit=3"
+```
+
+Debe devolver partidas. Qué crea y cómo configurarlo: README, [Datos de ejemplo](../README.md#datos-de-ejemplo).
 
 ### Jugar una partida
 
@@ -90,8 +105,8 @@ Si cambia `TYPING_API_URL`, hay que reconstruir el frontend, porque la URL queda
 |---|---|
 | `docker compose stop` | Detiene los contenedores sin borrarlos |
 | `docker compose down` | Borra los contenedores. **Los datos de MySQL se conservan** en el volumen `typing-mysql-data` |
-| `docker compose down -v` | Borra los contenedores **y los datos de MySQL**: se pierden los resultados guardados. Hace falta, por ejemplo, después de cambiar las contraseñas de MySQL en `.env` |
-| `docker image rm typing-battle-api:local typing-battle-frontend:local` | Borra las imágenes construidas, para liberar espacio |
+| `docker compose down -v` | Borra los contenedores **y los datos de MySQL**: se pierden los resultados guardados, pero los datos de ejemplo se vuelven a generar al levantar de nuevo. Hace falta, por ejemplo, después de cambiar las contraseñas de MySQL en `.env` |
+| `docker image rm typing-battle-api:local typing-battle-frontend:local typing-battle-data-generator:local` | Borra las imágenes construidas, para liberar espacio |
 
 ## 7. Construir las imágenes sin Compose
 
@@ -115,6 +130,8 @@ La imagen de la API no lleva configuración: al ejecutarla hay que pasar al meno
 | `required variable … is missing a value` | No existe el `.env` o le falta una variable: el compose no tiene valores por defecto | `Copy-Item .env.example .env`, o agregar al `.env` la variable que nombra el error |
 | `port is already allocated` o `bind: address already in use` | `dotnet run`, `npm start` u otro MySQL ya usan el puerto 5015, 4001 o 3306 | Detenerlos. Para ver qué usa un puerto: `Get-NetTCPConnection -LocalPort 5015` |
 | `typing-battle-api` no aparece en `docker compose ps` | La API se detuvo al arrancar | Ver el error con `docker compose ps -a` y `docker compose logs api` |
+| `typing-battle-data-generator` aparece como `Exited (1)` | La API no respondió a tiempo o rechazó las partidas | Ver el motivo con `docker compose logs data-generator`; si la API tardó, subir `DATA_WAIT_SECONDS` en `.env` y `docker compose up -d` |
+| El historial de `demo-ana` está vacío | El generador no terminó o falló | `docker compose logs data-generator`. Al terminar sin errores, `docker compose up -d` lo vuelve a correr sin duplicar datos |
 | La API se detiene con `Access denied` de MySQL después de cambiar `.env` | MySQL aplica las contraseñas solo al crear el volumen | `docker compose down -v` (borra los datos) y volver a levantar |
 | El navegador bloquea las llamadas del juego a la API (error de CORS en la consola) | El origen del Shell no está permitido en la API | En `.env`: `CORS_SHELL_ORIGIN` con el origen del Shell; luego `docker compose up -d api` |
 | El juego llama a una URL de la API equivocada | `TYPING_API_URL` quedó fija al construir la imagen | `docker compose up -d --build frontend` |
