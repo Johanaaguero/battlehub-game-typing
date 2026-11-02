@@ -1,0 +1,192 @@
+# CI del backend (API de Typing en .NET 10). Corre solo cuando cambia el backend (R-24).
+#
+# Etapas: restore, build, lint (dotnet format), migraciones al día, pruebas unitarias y de integración contra un
+# MySQL 8.4 real, cobertura, comentario de cobertura en el PR y docker build de la imagen de la API.
+# La cobertura une las pruebas unitarias y las de integración (R-19) y no cuenta el código generado: las migraciones
+# y los archivos de obj/. El CI falla si las líneas cubiertas quedan por debajo del 85 % (R-22).
+#
+# Los checks obligatorios para mezclar a main son los del workflow «Build y pruebas unitarias», que corre siempre.
+# Este workflow no lo es: con un filtro "paths", un check obligatorio que no se ejecuta deja el PR esperando.
+
+name: CI - Backend
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/backend/**"
+      - "tests/**"
+      - "TypingBattle.slnx"
+      - "dotnet-tools.json"
+      - ".editorconfig"
+      - ".dockerignore"
+      - "docker-compose.yml"
+      - ".env.example"
+      - ".github/workflows/ci-backend.yml"
+      - ".github/actions/coverage-comment/**"
+  push:
+    branches: [main]
+    paths:
+      - "src/backend/**"
+      - "tests/**"
+      - "TypingBattle.slnx"
+      - "dotnet-tools.json"
+      - ".editorconfig"
+      - ".dockerignore"
+      - "docker-compose.yml"
+      - ".env.example"
+      - ".github/workflows/ci-backend.yml"
+      - ".github/actions/coverage-comment/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-backend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (.NET 10)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      pull-requests: write
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: ci_root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pci_root"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    env:
+      DOTNET_NOLOGO: true
+      # Sin TLS: el MySQL del CI es temporal, y el conector MySql.Data falla a veces al negociar TLS
+      # en varias conexiones a la vez (bug #111759 de bugs.mysql.com).
+      TYPING_TEST_MYSQL: "Server=127.0.0.1;Port=3306;User ID=root;Password=ci_root;SslMode=Disabled"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore
+        run: |
+          dotnet restore
+          dotnet tool restore
+
+      - name: Build (las advertencias son errores)
+        run: dotnet build --no-restore
+
+      - name: Lint (dotnet format)
+        run: dotnet format TypingBattle.slnx --verify-no-changes --severity warn --no-restore
+
+      - name: Migraciones al día con el modelo
+        # dotnet ef solo arma el modelo y no se conecta a MySQL: basta una cadena sin credenciales.
+        env:
+          ConnectionStrings__Typing: "Server=localhost;Database=typing_ci"
+        run: dotnet ef migrations has-pending-model-changes --project src/backend/TypingBattle.Api --no-build
+
+      - name: Pruebas unitarias
+        run: dotnet test --no-build --filter "Category=Unit" --collect:"XPlat Code Coverage" --results-directory coverage/results
+
+      - name: Pruebas de integración
+        run: dotnet test --no-build --filter "Category=Integration" --collect:"XPlat Code Coverage" --results-directory coverage/results
+
+      - name: Informe de cobertura (unitarias + integración)
+        if: always()
+        run: |
+          dotnet reportgenerator \
+            "-reports:coverage/results/**/coverage.cobertura.xml" \
+            "-targetdir:coverage/report" \
+            "-reporttypes:JsonSummary;Cobertura" \
+            "-classfilters:-TypingBattle.Api.Persistence.Migrations.*" \
+            "-filefilters:-*/obj/*;-*/Migrations/*"
+
+      - name: Cobertura mínima del 85 % en líneas
+        id: coverage
+        if: always()
+        run: |
+          summary=coverage/report/Summary.json
+          body="$RUNNER_TEMP/coverage-backend.md"
+          marker='<!-- typing-coverage-backend -->'
+          if [ -f "$summary" ]; then
+            lines=$(jq -r '.summary.linecoverage' "$summary")
+            covered=$(jq -r '.summary.coveredlines' "$summary")
+            coverable=$(jq -r '.summary.coverablelines' "$summary")
+            branches=$(jq -r '.summary.branchcoverage' "$summary")
+            methods=$(jq -r '.summary.methodcoverage' "$summary")
+            if jq -e '.summary.linecoverage >= 85' "$summary" > /dev/null; then
+              verdict='Cumple.'
+              echo 'passed=true' >> "$GITHUB_OUTPUT"
+            else
+              verdict='No cumple.'
+              echo 'passed=false' >> "$GITHUB_OUTPUT"
+            fi
+            {
+              echo "$marker"
+              echo '### Cobertura del backend'
+              echo
+              echo '| Medida | Porcentaje |'
+              echo '| --- | --- |'
+              echo "| Líneas | ${lines}% (${covered} de ${coverable}) |"
+              echo "| Ramas | ${branches}% |"
+              echo "| Métodos | ${methods}% |"
+              echo
+              echo "Mínimo exigido: 85% en líneas, con las pruebas unitarias y de integración juntas y sin contar las migraciones (código generado). ${verdict}"
+            } > "$body"
+          else
+            echo 'passed=false' >> "$GITHUB_OUTPUT"
+            printf '%s\nNo se pudo generar la cobertura del backend. Revisa el resultado de las pruebas.\n' "$marker" > "$body"
+          fi
+          echo "body=$body" >> "$GITHUB_OUTPUT"
+          cat "$body" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Informe de cobertura como artefacto
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-backend
+          path: coverage/report/
+          if-no-files-found: ignore
+
+      - name: Comentar la cobertura en el PR
+        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        uses: ./.github/actions/coverage-comment
+        with:
+          marker: "<!-- typing-coverage-backend -->"
+          body-file: ${{ steps.coverage.outputs.body }}
+
+      - name: Fallar si la cobertura no llega al mínimo
+        if: always() && steps.coverage.outputs.passed != 'true'
+        run: |
+          echo '::error::La cobertura del backend es menor al 85 % en líneas, o no se pudo medir.'
+          exit 1
+
+  docker:
+    name: Docker (imagen de la API)
+    needs: backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # El mismo comando de la documentación (docs/docker.md); los runners de GitHub ya traen Docker.
+      - name: Imagen de la API
+        run: docker build -f src/backend/TypingBattle.Api/Dockerfile -t typing-battle-api:ci .
+
+      - name: Compose válido con la plantilla .env.example
+        run: docker compose --env-file .env.example config --quiet

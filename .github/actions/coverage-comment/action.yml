@@ -1,0 +1,35 @@
+# Publica en el PR un comentario con el informe de cobertura, o lo actualiza si ya existe (R-22).
+# Lo usan los CI del backend y del frontend; cada uno arma su propio texto y su propio marcador.
+# Requiere el permiso pull-requests: write en el job que la llama.
+
+name: Comentario de cobertura
+description: Crea o actualiza el comentario de cobertura en el Pull Request.
+
+inputs:
+  marker:
+    description: Primera línea del comentario (un comentario HTML). Identifica el comentario para actualizarlo en lugar de repetirlo.
+    required: true
+  body-file:
+    description: Ruta absoluta del archivo Markdown con el texto del comentario. Debe empezar con el marcador.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/github-script@v7
+      env:
+        MARKER: ${{ inputs.marker }}
+        BODY_FILE: ${{ inputs.body-file }}
+      with:
+        script: |
+          const fs = require('node:fs');
+          const marker = process.env.MARKER;
+          const body = fs.readFileSync(process.env.BODY_FILE, 'utf8');
+          const issue_number = context.issue.number;
+          const comments = await github.paginate(github.rest.issues.listComments, { ...context.repo, issue_number });
+          const existing = comments.find(comment => comment.user.type === 'Bot' && comment.body?.startsWith(marker));
+          if (existing) {
+            await github.rest.issues.updateComment({ ...context.repo, comment_id: existing.id, body });
+          } else {
+            await github.rest.issues.createComment({ ...context.repo, issue_number, body });
+          }
