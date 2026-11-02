@@ -30,7 +30,9 @@ Este servicio será responsable de:
 
 ```text
 battlehub-game-typing/
-├── .github/workflows/ci.yml           → pipeline de CI (backend, frontend, generador de datos e imágenes de Docker)
+├── .github/
+│   ├── actions/coverage-comment/      → acción que publica el comentario de cobertura en el PR
+│   └── workflows/                     → CI - Backend, CI - Frontend, CI - Generador de datos y Build y pruebas unitarias
 ├── docs/
 │   ├── api-resultados.md              → referencia de la API REST de resultados
 │   ├── api-typing-hub.md              → contrato del hub SignalR /hubs/typing
@@ -500,9 +502,30 @@ npm start
 
 Las pruebas (`npm test`) no necesitan la API: usan una falsa.
 
+## Integración continua (CI)
+
+El CI corre en GitHub Actions, con cuatro workflows en `.github/workflows/`. Los tres CI por componente corren **solo si cambia su parte** (filtros `paths`, R-24); «Build y pruebas unitarias» corre siempre.
+
+| Workflow | Cuándo corre | Qué hace |
+|---|---|---|
+| **CI - Backend** | Cambios en `src/backend/`, `tests/`, `TypingBattle.slnx`, `dotnet-tools.json`, `.editorconfig`, `.dockerignore`, `docker-compose.yml` o `.env.example` | Restore, build sin advertencias, lint (`dotnet format`), migraciones al día, pruebas unitarias y de integración con MySQL 8.4, cobertura, comentario en el PR y `docker build` de la API |
+| **CI - Frontend** | Cambios en `src/frontend/` | Install, lint (ESLint y Stylelint), build, pruebas unitarias con cobertura, comentario en el PR y `docker build` del frontend |
+| **CI - Generador de datos** | Cambios en `src/data-generator/` | Pruebas unitarias con cobertura y `docker build` del generador |
+| **Build y pruebas unitarias** | Siempre: cada PR hacia `main` y cada push a `main` | Solo build y pruebas unitarias de las tres partes, sin MySQL ni Docker: es el aviso rápido (R-21) |
+
+- **Ejecución manual (R-54):** los cuatro workflows tienen `workflow_dispatch`. En la pestaña **Actions**, elegir el workflow y pulsar **Run workflow**, sin hacer un commit.
+- **Cobertura mínima del 85 % (R-19, R-22):**
+  - Backend: líneas, con las pruebas unitarias y las de integración juntas, sin contar las migraciones ni el código generado. Las une ReportGenerator (herramienta fijada en `dotnet-tools.json`).
+  - Frontend: Jest exige 85 % en sentencias, ramas, funciones y líneas (`coverageThreshold` en `src/frontend/package.json`), sin excluir archivos de producción.
+  - Generador de datos: el ejecutor de pruebas de Node exige 85 % en líneas, ramas y funciones.
+  - En cada PR, CI - Backend y CI - Frontend publican un comentario con los porcentajes, que se actualiza en cada push, y fallan si no llegan al mínimo. Los informes completos quedan como artefactos de la ejecución.
+- **Merge bloqueado si falla el CI (R-25):** el ruleset de `main` exige los tres checks de «Build y pruebas unitarias» (`Build y unitarias - Backend`, `Build y unitarias - Frontend` y `Build y unitarias - Generador de datos`). Ese workflow corre siempre, así que un PR que solo cambia documentación no se queda esperando. Los CI por componente no son obligatorios porque, con un filtro `paths`, un check obligatorio que no se ejecuta deja el PR esperando; igual aparecen en el PR y hay que revisarlos antes de mezclar.
+- **Versiones (R-42, R-51):** Node 22 sale del `.nvmrc` de cada proyecto y .NET 10 de `dotnet-version: 10.0.x`.
+- Los comandos son los mismos que se corren en local: ver [Desarrollo (opcional)](#desarrollo-opcional) y [`docs/docker.md`](docs/docker.md).
+
 ## Flujo de trabajo
 
-- `main` está protegida: sin push directo; todo entra por Pull Request con CI en verde y al menos 1 aprobación.
+- `main` está protegida: sin push directo; todo entra por Pull Request con los checks de «Build y pruebas unitarias» en verde y al menos 1 aprobación.
 - Commits y títulos de PR en formato semántico: `<tipo>(<alcance opcional>): <descripción en imperativo>`. Tipos: `feat`, `fix`, `docs`, `test`, `refactor`, `chore`, `ci`, `perf`.
 - Las pruebas de .NET se etiquetan `[Trait("Category", "Unit")]` o `[Trait("Category", "Integration")]`, porque el CI las filtra por categoría.
 - Todas las fechas y timestamps van en UTC, formato ISO-8601 con sufijo `Z`.

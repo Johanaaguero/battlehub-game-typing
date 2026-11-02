@@ -110,7 +110,7 @@ Si cambia `TYPING_API_URL`, hay que reconstruir el frontend, porque la URL queda
 
 ## 7. Construir las imágenes sin Compose
 
-Son los mismos comandos que corre el CI (job «Docker (imágenes)»):
+Son los mismos comandos que corre el CI (los jobs «Docker» de los workflows CI - Backend, CI - Frontend y CI - Generador de datos):
 
 ```powershell
 docker build -f src/backend/TypingBattle.Api/Dockerfile -t typing-battle-api .
