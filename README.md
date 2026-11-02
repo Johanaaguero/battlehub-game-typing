@@ -479,7 +479,7 @@ npm test
 npm run build
 ```
 
-`npm test` corre primero el lint (ESLint y Stylelint) y luego las pruebas de Jest.
+`npm test` corre primero el lint (ESLint y Stylelint) y luego las pruebas de Jest, con el reporte de cobertura (`coverage/`: `lcov.info` y `coverage-summary.json`). Si la cobertura de sentencias, ramas, funciones o líneas baja del 85 %, Jest falla (R-19, R-22): el umbral está en `coverageThreshold`, dentro de la configuración de Jest de `package.json`.
 
 - **URL de la API.** Se fija al compilar con la variable `TYPING_API_URL`, que es obligatoria: sin ella fallan `npm start`, `npm run build` y el build de Docker. Por ejemplo, `TYPING_API_URL=https://typing.mi-dominio.com npm run build`.
 - **Identidad.** El juego no usa tokens ni habla con Auth0: manda el `currentUser` que le entrega el Shell en el contexto (ver [Identidad del jugador](#identidad-del-jugador)).
