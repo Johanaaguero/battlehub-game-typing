@@ -364,24 +364,41 @@ describe('GameModule (R-44: práctica integrada con Shell)', () => {
   });
 
   it('no envía métricas, no guarda resultados ni emite el evento al finalizar práctica', async () => {
-    const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue({ ok: true } as Response);
+    // jsdom no siempre expone fetch en global; se instala el mock de forma explícita.
+    const originalFetchDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'fetch');
+    const fetchMock = jest.fn().mockResolvedValue({ ok: true } as Response);
+    Object.defineProperty(globalThis, 'fetch', {
+      configurable: true,
+      writable: true,
+      value: fetchMock,
+    });
+
     const eventSpy = jest.fn();
     window.addEventListener(GAME_FINISHED_EVENT, eventSpy);
 
-    const game = new GameModule();
-    await game.initialize(shellPracticeContext);
-    await game.start();
-    game.typedText = game.targetText;
-    game.handleTyping();
-    await Promise.resolve();
+    try {
+      const game = new GameModule();
+      await game.initialize(shellPracticeContext);
+      await game.start();
+      game.typedText = game.targetText;
+      game.handleTyping();
+      await Promise.resolve();
 
-    expect(game.matchFinished).toBe(true);
-    expect(mockClient.sendPlayerUpdate).not.toHaveBeenCalled();
-    expect(mockClient.endMatch).not.toHaveBeenCalled();
-    expect(fetchSpy).not.toHaveBeenCalled();
-    expect(eventSpy).not.toHaveBeenCalled();
+      expect(game.matchFinished).toBe(true);
+      expect(mockClient.sendPlayerUpdate).not.toHaveBeenCalled();
+      expect(mockClient.endMatch).not.toHaveBeenCalled();
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(eventSpy).not.toHaveBeenCalled();
+    } finally {
+      window.removeEventListener(GAME_FINISHED_EVENT, eventSpy);
 
-    window.removeEventListener(GAME_FINISHED_EVENT, eventSpy);
+      // Restaura exactamente el estado previo, incluso si fetch no existía.
+      if (originalFetchDescriptor) {
+        Object.defineProperty(globalThis, 'fetch', originalFetchDescriptor);
+      } else {
+        Reflect.deleteProperty(globalThis, 'fetch');
+      }
+    }
   });
 
   it('conserva la identidad del Shell al reiniciar una práctica integrada', async () => {
