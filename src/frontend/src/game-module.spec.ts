@@ -1,0 +1,396 @@
+import { createFixture } from '@aurelia/testing';
+import { GameModule } from '../src/game-module';
+import { GAME_FINISHED_EVENT, type GameContext, type GameFinishedDetail } from '../src/game-contracts';
+import { RESULTS_API_URL, TYPING_HUB_URL } from '../src/config';
+import { SignalRClient } from '../src/signalr-client';
+import template from '../src/game-module.html';
+
+// Cliente SignalR simulado: las pruebas no abren conexiones reales.
+const mockClient = {
+  connect: jest.fn(),
+  joinMatch: jest.fn(),
+  leaveMatch: jest.fn(),
+  sendPlayerUpdate: jest.fn(),
+  endMatch: jest.fn(),
+  disconnect: jest.fn(),
+  removeAllListeners: jest.fn(),
+  onPlayerJoined: jest.fn(),
+  onPlayerLeft: jest.fn(),
+  onPlayerUpdate: jest.fn(),
+  onMatchEnded: jest.fn(),
+  onJoinFailed: jest.fn(),
+  onUpdateFailed: jest.fn(),
+  state: 'Connected',
+};
+
+jest.mock('../src/signalr-client', () => ({
+  SignalRClient: jest.fn(() => mockClient),
+}));
+
+const context: GameContext = {
+  matchId: 'match-test-001',
+  gameType: 'typing',
+  currentUser: { id: 'user-ana', displayName: 'Ana' },
+};
+
+function resetClient(): void {
+  jest.clearAllMocks();
+  mockClient.state = 'Connected';
+  mockClient.connect.mockResolvedValue(undefined);
+  mockClient.joinMatch.mockResolvedValue(true);
+  mockClient.leaveMatch.mockResolvedValue(true);
+  mockClient.sendPlayerUpdate.mockResolvedValue(true);
+  mockClient.endMatch.mockResolvedValue(undefined);
+  mockClient.disconnect.mockResolvedValue(undefined);
+}
+
+describe('GameModule (ciclo de vida)', () => {
+  beforeEach(() => {
+    resetClient();
+    jest.useFakeTimers();
+    jest.spyOn(console, 'log').mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+    jest.restoreAllMocks();
+  });
+
+  async function startGame(): Promise<GameModule> {
+    const game = new GameModule();
+    await game.initialize(context);
+    await game.start();
+    return game;
+  }
+
+  it('rechaza start() si no puede unirse a la partida (el Shell lo muestra como LIFECYCLE_ERROR)', async () => {
+    mockClient.joinMatch.mockResolvedValue(false);
+    const game = new GameModule();
+    await game.initialize(context);
+
+    await expect(game.start()).rejects.toThrow('No fue posible unirse a la partida');
+  });
+
+  it('no deja escribir antes de start()', async () => {
+    const game = new GameModule();
+    await game.initialize(context);
+
+    game.typedText = 'La';
+    game.handleTyping();
+
+    expect(game.canType).toBe(false);
+    expect(game.progress).toBe(0);
+    expect(mockClient.sendPlayerUpdate).not.toHaveBeenCalled();
+  });
+
+  it('el temporizador arranca con start(), sin esperar la primera tecla', async () => {
+    const game = await startGame();
+
+    await jest.advanceTimersByTimeAsync(3_000);
+
+    expect(game.timeRemaining).toBe(57);
+  });
+
+  it('al acabarse el tiempo envía las métricas finales y pide terminar la partida una sola vez', async () => {
+    const game = await startGame();
+    game.typedText = 'La tec';
+    game.handleTyping();
+
+    await jest.advanceTimersByTimeAsync(60_000);
+
+    expect(game.isTimeUp).toBe(true);
+    expect(mockClient.endMatch).toHaveBeenCalledTimes(1);
+    expect(mockClient.endMatch).toHaveBeenCalledWith(expect.objectContaining({
+      matchId: context.matchId,
+      currentUser: context.currentUser.id,
+      players: null,
+      startedAt: null,
+      finishedAt: null,
+      winnerUserId: null,
+    }));
+
+    const updates = mockClient.sendPlayerUpdate.mock.invocationCallOrder;
+    expect(updates[updates.length - 1]).toBeLessThan(mockClient.endMatch.mock.invocationCallOrder[0]);
+
+    await jest.advanceTimersByTimeAsync(5_000);
+    expect(mockClient.endMatch).toHaveBeenCalledTimes(1);
+  });
+
+  it('completar el texto congela la velocidad y bloquea la escritura hasta el final', async () => {
+    const game = await startGame();
+    await jest.advanceTimersByTimeAsync(10_000);
+
+    game.typedText = game.targetText;
+    game.handleTyping();
+    const wpmAtCompletion = game.wpm;
+
+    expect(game.completed).toBe(true);
+    expect(game.canType).toBe(false);
+    expect(wpmAtCompletion).toBeGreaterThan(0);
+
+    await jest.advanceTimersByTimeAsync(20_000);
+
+    expect(game.wpm).toBe(wpmAtCompletion);
+    expect(mockClient.endMatch).not.toHaveBeenCalled();
+  });
+
+  it('pause() detiene el temporizador y start() lo reanuda donde quedó', async () => {
+    const game = await startGame();
+    await jest.advanceTimersByTimeAsync(5_000);
+
+    await game.pause();
+    await jest.advanceTimersByTimeAsync(10_000);
+    expect(game.timeRemaining).toBe(55);
+
+    await game.start();
+    await jest.advanceTimersByTimeAsync(5_000);
+    expect(game.timeRemaining).toBe(50);
+  });
+
+  it('conserva el resultado si después le llega already_exists', async () => {
+    const game = await startGame();
+    const onMatchEnded = mockClient.onMatchEnded.mock.calls[0][0];
+    const result = {
+      matchId: context.matchId,
+      gameType: 'typing',
+      players: [{ userId: 'user-ana', displayName: 'Ana', score: 600 }],
+      startedAt: '2026-10-03T20:00:00Z',
+      finishedAt: '2026-10-03T20:01:00Z',
+      winnerUserId: 'user-ana',
+      metadata: {},
+    };
+
+    onMatchEnded({ matchId: context.matchId, outcome: 'created', resultOrErrors: result });
+    onMatchEnded({ matchId: context.matchId, outcome: 'already_exists', resultOrErrors: { matchId: context.matchId } });
+
+    expect(game.matchFinished).toBe(true);
+    expect(game.finalResult).toEqual(result);
+    expect(game.resultMessage).toBe('Partida finalizada correctamente.');
+  });
+});
+
+describe('GameModule (plantilla)', () => {
+  beforeEach(() => {
+    resetClient();
+    jest.spyOn(console, 'log').mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('el componente trae su plantilla: el Shell la dibuja aunque aún no haya contexto', async () => {
+    const { appHost } = await createFixture(
+      '<typing-game-module></typing-game-module>',
+      {},
+      [GameModule],
+    ).started;
+
+    expect(appHost.textContent).toContain('Competitive Typing Arena');
+    expect(appHost.textContent).toContain('Esperando información de la partida');
+  });
+
+  it('el área de escritura no trae texto inicial (la sangría del HTML desalinearía todo lo escrito)', () => {
+    expect(template).toMatch(/<textarea[^>]*><\/textarea>/);
+  });
+});
+
+describe('GameModule (URL de la API, sin autenticación)', () => {
+  const realFetch = globalThis.fetch;
+  let fetchMock: jest.Mock;
+
+  beforeEach(() => {
+    resetClient();
+    jest.spyOn(console, 'log').mockImplementation(() => undefined);
+    fetchMock = jest.fn().mockResolvedValue({ ok: true, json: async () => [] });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+  });
+
+  afterEach(() => {
+    globalThis.fetch = realFetch;
+    jest.restoreAllMocks();
+  });
+
+  it('se conecta al hub solo con la URL: el juego no usa credenciales (R-30)', async () => {
+    const game = new GameModule();
+    await game.initialize(context);
+
+    const calls = (SignalRClient as unknown as jest.Mock).mock.calls;
+    expect(calls[calls.length - 1]).toEqual([TYPING_HUB_URL]);
+  });
+
+  it('consulta las estadísticas sin encabezados de autenticación', async () => {
+    const game = new GameModule();
+    await game.initialize(context);
+    await game.loadStats();
+
+    expect(fetchMock.mock.calls[0]).toEqual([
+      `${RESULTS_API_URL}/players/user-ana/stats`,
+    ]);
+  });
+
+  it('codifica el id del jugador en la URL del historial', async () => {
+    const game = new GameModule();
+    await game.initialize({ ...context, currentUser: { id: 'google-oauth2|123', displayName: 'José Núñez' } });
+    await game.loadHistory();
+
+    expect(fetchMock.mock.calls[0]).toEqual([
+      `${RESULTS_API_URL}/players/google-oauth2%7C123/history?limit=50&offset=0`,
+    ]);
+  });
+});
+
+describe('GameModule (evento de fin de partida para el Shell)', () => {
+  const result = {
+    matchId: context.matchId,
+    gameType: 'typing',
+    players: [
+      { userId: 'user-ana', displayName: 'Ana', score: 600 },
+      { userId: 'user-luis', displayName: 'Luis', score: 360 },
+    ],
+    startedAt: '2026-10-03T20:00:00Z',
+    finishedAt: '2026-10-03T20:01:00Z',
+    winnerUserId: 'user-ana',
+    metadata: {},
+  };
+  let received: GameFinishedDetail[];
+  const listener = (event: Event): void => {
+    received.push((event as CustomEvent<GameFinishedDetail>).detail);
+  };
+
+  beforeEach(() => {
+    resetClient();
+    jest.useFakeTimers();
+    jest.spyOn(console, 'log').mockImplementation(() => undefined);
+    received = [];
+    window.addEventListener(GAME_FINISHED_EVENT, listener);
+  });
+
+  afterEach(() => {
+    window.removeEventListener(GAME_FINISHED_EVENT, listener);
+    jest.useRealTimers();
+    jest.restoreAllMocks();
+  });
+
+  async function startGame(): Promise<(notification: unknown) => void> {
+    const game = new GameModule();
+    await game.initialize(context);
+    await game.start();
+    return mockClient.onMatchEnded.mock.calls[0][0];
+  }
+
+  it('avisa al Shell una sola vez, con el resultado y el ranking de la partida', async () => {
+    const onMatchEnded = await startGame();
+
+    onMatchEnded({ matchId: context.matchId, outcome: 'created', resultOrErrors: result });
+    onMatchEnded({ matchId: context.matchId, outcome: 'already_exists', resultOrErrors: { matchId: context.matchId } });
+
+    expect(received).toEqual([
+      {
+        matchId: 'match-test-001',
+        gameType: 'typing',
+        winnerUserId: 'user-ana',
+        players: [
+          { userId: 'user-ana', displayName: 'Ana', score: 600, position: 1 },
+          { userId: 'user-luis', displayName: 'Luis', score: 360, position: 2 },
+        ],
+        finishedAt: '2026-10-03T20:01:00Z',
+      },
+    ]);
+  });
+
+  it('avisa solo con los datos de la partida si únicamente le llega already_exists', async () => {
+    const onMatchEnded = await startGame();
+
+    onMatchEnded({ matchId: context.matchId, outcome: 'already_exists', resultOrErrors: { matchId: context.matchId } });
+
+    expect(received).toEqual([
+      { matchId: 'match-test-001', gameType: 'typing', winnerUserId: null, players: [], finishedAt: null },
+    ]);
+  });
+
+  it.each(['invalid', 'error'])('no avisa si la partida no se pudo guardar (%s)', async (outcome) => {
+    const onMatchEnded = await startGame();
+
+    onMatchEnded({ matchId: context.matchId, outcome, resultOrErrors: { message: 'fallo' } });
+
+    expect(received).toEqual([]);
+  });
+});
+
+describe('GameModule (R-44: práctica integrada con Shell)', () => {
+  beforeEach(() => {
+    resetClient();
+    jest.useFakeTimers();
+    jest.spyOn(console, 'log').mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+    jest.restoreAllMocks();
+  });
+
+  const shellPracticeContext: GameContext = {
+    gameType: 'typing',
+    currentUser: { id: 'shell-user-123', displayName: 'Usuario Shell' },
+  };
+
+  it('inicializa práctica desde Shell sin requerir matchId', async () => {
+    const game = new GameModule();
+    await expect(game.initialize(shellPracticeContext)).resolves.toBeUndefined();
+    expect(game.isPracticeMode).toBe(true);
+    expect(game.context).toEqual(shellPracticeContext);
+  });
+
+  it('conserva la identidad real proporcionada por Shell', async () => {
+    const game = new GameModule();
+    await game.initialize(shellPracticeContext);
+    expect(game.players[0]).toEqual(expect.objectContaining({
+      userId: 'shell-user-123',
+      displayName: 'Usuario Shell',
+    }));
+    expect(game.context?.currentUser).toEqual(shellPracticeContext.currentUser);
+  });
+
+  it('inicia la práctica sin conectar ni unirse a SignalR', async () => {
+    const game = new GameModule();
+    await game.initialize(shellPracticeContext);
+    await game.start();
+    expect(mockClient.connect).not.toHaveBeenCalled();
+    expect(mockClient.joinMatch).not.toHaveBeenCalled();
+    expect(game.timeRemaining).toBe(60);
+    await jest.advanceTimersByTimeAsync(2_000);
+    expect(game.timeRemaining).toBe(58);
+  });
+
+  it('no envía métricas, no guarda resultados ni emite el evento al finalizar práctica', async () => {
+    const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue({ ok: true } as Response);
+    const eventSpy = jest.fn();
+    window.addEventListener(GAME_FINISHED_EVENT, eventSpy);
+
+    const game = new GameModule();
+    await game.initialize(shellPracticeContext);
+    await game.start();
+    game.typedText = game.targetText;
+    game.handleTyping();
+    await Promise.resolve();
+
+    expect(game.matchFinished).toBe(true);
+    expect(mockClient.sendPlayerUpdate).not.toHaveBeenCalled();
+    expect(mockClient.endMatch).not.toHaveBeenCalled();
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(eventSpy).not.toHaveBeenCalled();
+
+    window.removeEventListener(GAME_FINISHED_EVENT, eventSpy);
+  });
+
+  it('mantiene el playground independiente sin contexto del Shell', async () => {
+    const game = new GameModule();
+    game.startPractice();
+    expect(game.isPracticeMode).toBe(true);
+    expect(game.context?.matchId).toBeUndefined();
+    expect(game.context?.currentUser.id).toBe('local-practice-player');
+    expect(mockClient.connect).not.toHaveBeenCalled();
+    expect(mockClient.joinMatch).not.toHaveBeenCalled();
+  });
+});
