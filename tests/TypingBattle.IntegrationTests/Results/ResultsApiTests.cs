@@ -3,7 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
-namespace TypingBattle.IntegrationTests;
+namespace TypingBattle.IntegrationTests.Results;
 
 /// <summary>
 /// Flujos de la API de resultados contra MySQL real, incluidos los dos mínimos exigidos por

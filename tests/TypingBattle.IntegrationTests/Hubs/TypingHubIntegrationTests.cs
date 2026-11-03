@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
 using TypingBattle.Api.Hubs;
 
-namespace TypingBattle.IntegrationTests;
+namespace TypingBattle.IntegrationTests.Hubs;
 
 [Trait("Category", "Integration")]
 public class TypingHubIntegrationTests : IClassFixture<TypingApiFactory>
