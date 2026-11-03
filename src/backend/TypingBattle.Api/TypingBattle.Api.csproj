@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="TypingBattle.IntegrationTests" />
+    <InternalsVisibleTo Include="TypingBattle.UnitTests" />
   </ItemGroup>
 
   <ItemGroup>

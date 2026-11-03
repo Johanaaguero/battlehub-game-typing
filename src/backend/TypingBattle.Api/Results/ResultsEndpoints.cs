@@ -36,7 +36,7 @@ public static class ResultsEndpoints
         return group;
     }
 
-    private static async Task<Results<Created<GameResultDto>, ValidationProblem, ProblemHttpResult>> SaveResult(
+    internal static async Task<Results<Created<GameResultDto>, ValidationProblem, ProblemHttpResult>> SaveResult(
         SaveResultRequest request, IResultsService service, CancellationToken cancellationToken)
     {
         var outcome = await service.SaveAsync(request, cancellationToken);
@@ -54,18 +54,18 @@ public static class ResultsEndpoints
         };
     }
 
-    private static async Task<Results<Ok<GameResultDto>, NotFound>> GetResult(
+    internal static async Task<Results<Ok<GameResultDto>, NotFound>> GetResult(
         string matchId, IResultsService service, CancellationToken cancellationToken)
     {
         var result = await service.GetAsync(matchId, cancellationToken);
         return result is null ? TypedResults.NotFound() : TypedResults.Ok(result);
     }
 
-    private static async Task<Ok<IReadOnlyList<PlayerHistoryItemDto>>> GetHistory(
+    internal static async Task<Ok<IReadOnlyList<PlayerHistoryItemDto>>> GetHistory(
         string userId, int? limit, int? offset, IResultsService service, CancellationToken cancellationToken) =>
         TypedResults.Ok(await service.GetHistoryAsync(userId, limit, offset, cancellationToken));
 
-    private static async Task<Ok<PlayerStatsDto>> GetStats(
+    internal static async Task<Ok<PlayerStatsDto>> GetStats(
         string userId, IResultsService service, CancellationToken cancellationToken) =>
         TypedResults.Ok(await service.GetStatsAsync(userId, cancellationToken));
 }
