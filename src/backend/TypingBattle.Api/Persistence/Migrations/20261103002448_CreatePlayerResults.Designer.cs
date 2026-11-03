@@ -11,8 +11,8 @@ using TypingBattle.Api.Persistence;
 namespace TypingBattle.Api.Persistence.Migrations
 {
     [DbContext(typeof(TypingDbContext))]
-    [Migration("20261026060848_AddGuidPrimaryKeyToGameResults")]
-    partial class AddGuidPrimaryKeyToGameResults
+    [Migration("20261103002448_CreatePlayerResults")]
+    partial class CreatePlayerResults
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
