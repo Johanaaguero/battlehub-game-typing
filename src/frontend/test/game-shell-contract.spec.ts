@@ -97,6 +97,19 @@ describe('contrato del Shell: contexto de lanzamiento', () => {
 
     expect(game.isPracticeMode).toBe(false);
   });
+
+  it('acepta los participantes que entrega el Shell sin tratarlos como práctica', async () => {
+    const game = new GameModule();
+    const participants = [
+      { userId: 'user-ana', displayName: 'Ana' },
+      { userId: 'user-beto', displayName: 'Beto' },
+    ];
+
+    await game.initialize({ ...matchContext(), participants });
+
+    expect(game.isPracticeMode).toBe(false);
+    expect(game.context).toMatchObject({ matchId: 'match-001', participants });
+  });
 });
 
 describe('contrato del Shell: práctica sin conexiones ni registros', () => {

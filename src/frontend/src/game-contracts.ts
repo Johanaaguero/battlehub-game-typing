@@ -8,10 +8,21 @@ interface CommonContext {
     events: EventTarget;
 }
 
+/** Integrante de la sala, tal como lo entrega el Shell al iniciar la partida. */
+export interface GameParticipant {
+    userId: string;
+    displayName: string;
+}
+
 /** Partida normal: viene de una sala real de Matchmaking. */
 export type GameContext = CommonContext & {
     matchId: string;
     mode?: never;
+    /**
+     * Foto de los integrantes de la sala al iniciar, incluido el usuario actual. Typing no depende de
+     * ella: los jugadores le llegan por el hub, y la lista no acredita identidad ante el servidor.
+     */
+    participants?: GameParticipant[];
 };
 
 /** Práctica (R-44): sin sala, sin conexiones y sin registros. */
