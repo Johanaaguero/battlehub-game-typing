@@ -443,7 +443,7 @@ El hub `/hubs/typing` corre en el mismo proceso y guarda el resultado al termina
 
 #### Migraciones
 
-El esquema solo cambia con migraciones de EF Core, y cada migración crea o cambia una sola tabla. El historial se rehízo en la Etapa 2 (antes había una migración con las dos tablas y una clave `varchar`); el esquema resultante es el mismo. **Una base creada con el historial anterior no sirve**: la API se detiene al arrancar con `Table 'game_results' already exists`. Hay que borrar el volumen y volver a levantar: `docker compose down -v` y luego `docker compose up -d --build`. La herramienta `dotnet-ef` está fijada en `dotnet-tools.json`:
+El esquema solo cambia con migraciones de EF Core, y cada migración crea o cambia una sola tabla. El historial de migraciones se actualizó en la Etapa 2: se reemplazó la migración que tenía las dos tablas y una clave `varchar` por dos migraciones, una por tabla; el esquema resultante es el mismo. **Una base creada con el historial anterior no sirve**: la API se detiene al arrancar con `Table 'game_results' already exists`. Hay que borrar el volumen y volver a levantar: `docker compose down -v` y luego `docker compose up -d --build`. La herramienta `dotnet-ef` está fijada en `dotnet-tools.json`:
 
 ```bash
 dotnet tool restore
