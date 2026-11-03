@@ -9,7 +9,3 @@ my-app {
   flex-direction: column;
   height: 100%;
 }
-
-.message {
-  background-color: lightblue;
-}

@@ -11,8 +11,8 @@ using TypingBattle.Api.Persistence;
 namespace TypingBattle.Api.Persistence.Migrations
 {
     [DbContext(typeof(TypingDbContext))]
-    [Migration("20261026060848_AddGuidPrimaryKeyToGameResults")]
-    partial class AddGuidPrimaryKeyToGameResults
+    [Migration("20261103002406_CreateGameResults")]
+    partial class CreateGameResults
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -63,71 +63,11 @@ namespace TypingBattle.Api.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasAlternateKey("MatchId");
+
                     b.HasIndex("FinishedAt");
 
                     b.ToTable("game_results", (string)null);
-                });
-
-            modelBuilder.Entity("TypingBattle.Api.Persistence.PlayerResultEntity", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    b.Property<double?>("Accuracy")
-                        .HasColumnType("double");
-
-                    b.Property<string>("DisplayName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("varchar(200)");
-
-                    b.Property<string>("MatchId")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("varchar(200)")
-                        .HasAnnotation("MySQL:Charset", "utf8mb4")
-                        .HasAnnotation("MySQL:Collation", "utf8mb4_bin");
-
-                    b.Property<int>("Position")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Score")
-                        .HasColumnType("int");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("varchar(200)")
-                        .HasAnnotation("MySQL:Charset", "utf8mb4")
-                        .HasAnnotation("MySQL:Collation", "utf8mb4_bin");
-
-                    b.Property<double?>("Wpm")
-                        .HasColumnType("double");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("MatchId", "UserId")
-                        .IsUnique();
-
-                    b.ToTable("player_results", (string)null);
-                });
-
-            modelBuilder.Entity("TypingBattle.Api.Persistence.PlayerResultEntity", b =>
-                {
-                    b.HasOne("TypingBattle.Api.Persistence.GameResultEntity", null)
-                        .WithMany("Players")
-                        .HasForeignKey("MatchId")
-                        .HasPrincipalKey("MatchId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("TypingBattle.Api.Persistence.GameResultEntity", b =>
-                {
-                    b.Navigation("Players");
                 });
 #pragma warning restore 612, 618
         }
