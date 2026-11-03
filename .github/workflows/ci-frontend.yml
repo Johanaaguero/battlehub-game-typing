@@ -1,0 +1,138 @@
+# CI del frontend (microfrontend de Typing en Aurelia). Corre solo cuando cambia el frontend (R-24).
+#
+# Etapas: install, lint (ESLint y Stylelint), build, pruebas unitarias con cobertura, comentario de cobertura en el PR y
+# docker build de la imagen del frontend. Jest falla si alguna medida de cobertura queda por debajo del 85 %
+# (coverageThreshold en src/frontend/package.json) y el CI falla con él (R-22).
+# Node 22 sale de src/frontend/.nvmrc (R-42).
+#
+# Los checks obligatorios para mezclar a main son los del workflow «Build y pruebas unitarias», que corre siempre.
+# Este workflow no lo es: con un filtro "paths", un check obligatorio que no se ejecuta deja el PR esperando.
+
+name: CI - Frontend
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/frontend/**"
+      - ".github/workflows/ci-frontend.yml"
+      - ".github/actions/coverage-comment/**"
+  push:
+    branches: [main]
+    paths:
+      - "src/frontend/**"
+      - ".github/workflows/ci-frontend.yml"
+      - ".github/actions/coverage-comment/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-frontend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    name: Frontend (Aurelia)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      pull-requests: write
+
+    defaults:
+      run:
+        working-directory: src/frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node (src/frontend/.nvmrc)
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: src/frontend/.nvmrc
+          cache: npm
+          cache-dependency-path: src/frontend/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint (ESLint + Stylelint)
+        run: npm run lint
+
+      - name: Build (genera dist/remoteEntry.js)
+        # La URL de la API es obligatoria al compilar; aquí solo importa que el build funcione.
+        env:
+          TYPING_API_URL: http://localhost:5015
+        run: npm run build
+
+      - name: Pruebas unitarias y cobertura
+        id: unit
+        # Sigue al informe y al comentario aunque falle, y el último paso hace fallar el job.
+        continue-on-error: true
+        run: npx jest --ci
+
+      - name: Informe de cobertura como artefacto
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-frontend
+          path: src/frontend/coverage/
+          if-no-files-found: ignore
+
+      - name: Texto del comentario de cobertura
+        id: comment
+        if: always()
+        run: |
+          summary=coverage/coverage-summary.json
+          body="$RUNNER_TEMP/coverage-frontend.md"
+          marker='<!-- typing-coverage-frontend -->'
+          if [ -f "$summary" ]; then
+            if jq -e '.total | (.lines.pct >= 85 and .statements.pct >= 85 and .functions.pct >= 85 and .branches.pct >= 85)' "$summary" > /dev/null; then
+              verdict='Cumple.'
+            else
+              verdict='No cumple.'
+            fi
+            {
+              echo "$marker"
+              echo '### Cobertura del frontend'
+              echo
+              echo '| Medida | Porcentaje |'
+              echo '| --- | --- |'
+              echo "| Líneas | $(jq -r '.total.lines.pct' "$summary")% |"
+              echo "| Sentencias | $(jq -r '.total.statements.pct' "$summary")% |"
+              echo "| Funciones | $(jq -r '.total.functions.pct' "$summary")% |"
+              echo "| Ramas | $(jq -r '.total.branches.pct' "$summary")% |"
+              echo
+              echo "Mínimo exigido: 85% en cada medida, sin excluir archivos de producción. ${verdict}"
+            } > "$body"
+          else
+            printf '%s\nNo se pudo generar la cobertura del frontend. Revisa el resultado de las pruebas.\n' "$marker" > "$body"
+          fi
+          echo "body=$body" >> "$GITHUB_OUTPUT"
+          cat "$body" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Comentar la cobertura en el PR
+        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        uses: ./.github/actions/coverage-comment
+        with:
+          marker: "<!-- typing-coverage-frontend -->"
+          body-file: ${{ steps.comment.outputs.body }}
+
+      - name: Fallar si las pruebas o la cobertura fallaron
+        if: always() && steps.unit.outcome != 'success'
+        run: exit 1
+
+  docker:
+    name: Docker (imagen del frontend)
+    needs: frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # El mismo comando de la documentación (docs/docker.md); la URL de la API es obligatoria al construir.
+      - name: Imagen del frontend
+        run: docker build --build-arg TYPING_API_URL=http://localhost:5015 -t typing-battle-frontend:ci src/frontend

@@ -35,7 +35,7 @@ Además de gitleaks, se revisó el historial completo con git:
 |---|---|---|
 | `typing_dev` | `.env.example` (valor de ejemplo) y README | Usuario `typing` del MySQL local |
 | `typing_root` | `.env.example` (valor de ejemplo) y README | Usuario `root` del MySQL local |
-| `ci_root` | `.github/workflows/ci.yml` | Usuario `root` del MySQL temporal del CI |
+| `ci_root` | `.github/workflows/ci-backend.yml` | Usuario `root` del MySQL temporal del CI |
 
 Solo sirven para bases de datos locales o del CI, que no se exponen fuera de la máquina. Ningún despliegue las usa: ahí la conexión llega por `ConnectionStrings__Typing`.
 

@@ -1,0 +1,63 @@
+# CI del generador de datos de ejemplo (Node 22, sin dependencias). Corre solo cuando cambia el generador (R-24).
+#
+# Etapas: pruebas unitarias con cobertura (el ejecutor de Node falla si baja del 85 % en líneas, ramas o funciones) y
+# docker build de su imagen. No hay install ni lint: el generador no tiene dependencias ni configuración de lint.
+# Node 22 sale de src/data-generator/.nvmrc (R-42).
+#
+# Los checks obligatorios para mezclar a main son los del workflow «Build y pruebas unitarias», que corre siempre.
+# Este workflow no lo es: con un filtro "paths", un check obligatorio que no se ejecuta deja el PR esperando.
+
+name: CI - Generador de datos
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/data-generator/**"
+      - ".github/workflows/ci-data-generator.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/data-generator/**"
+      - ".github/workflows/ci-data-generator.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-data-generator-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  data-generator:
+    name: Generador de datos (Node 22)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    defaults:
+      run:
+        working-directory: src/data-generator
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node (src/data-generator/.nvmrc)
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: src/data-generator/.nvmrc
+
+      - name: Pruebas unitarias y cobertura
+        run: npm test
+
+  docker:
+    name: Docker (imagen del generador)
+    needs: data-generator
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Imagen del generador de datos
+        run: docker build -t typing-battle-data-generator:ci src/data-generator

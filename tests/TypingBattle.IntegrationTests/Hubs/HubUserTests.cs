@@ -3,7 +3,7 @@ using System.Net;
 using Microsoft.AspNetCore.SignalR.Client;
 using TypingBattle.Api.Hubs;
 
-namespace TypingBattle.IntegrationTests;
+namespace TypingBattle.IntegrationTests.Hubs;
 
 /// <summary>El juego no se autentica (R-30): la API y el hub no piden credenciales y el jugador viaja en cada petición.</summary>
 [Trait("Category", "Integration")]

@@ -1,0 +1,99 @@
+# Build y pruebas unitarias (R-21): el workflow rápido. Solo compila y corre las pruebas unitarias de cada parte,
+# sin MySQL, sin pruebas de integración, sin lint y sin docker build; todo eso lo hacen los CI por componente.
+#
+# Corre siempre, en cada PR hacia main y en cada push a main, sin filtros "paths". Por eso sus tres checks son los que
+# se exigen para mezclar a main (R-25): un check obligatorio que no se ejecuta deja el PR esperando, y los CI por
+# componente solo corren cuando cambia su parte. Se puede correr a mano desde la pestaña Actions (R-54).
+
+name: Build y pruebas unitarias
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-unit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Build y unitarias - Backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DOTNET_NOLOGO: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build (las advertencias son errores)
+        run: dotnet build --no-restore
+
+      - name: Pruebas unitarias
+        run: dotnet test --no-build --filter "Category=Unit"
+
+  frontend:
+    name: Build y unitarias - Frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    defaults:
+      run:
+        working-directory: src/frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node (src/frontend/.nvmrc)
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: src/frontend/.nvmrc
+          cache: npm
+          cache-dependency-path: src/frontend/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Build
+        env:
+          TYPING_API_URL: http://localhost:5015
+        run: npm run build
+
+      # Jest también exige el 85 % de cobertura: si baja, este check falla y bloquea el merge.
+      - name: Pruebas unitarias
+        run: npx jest --ci
+
+  data-generator:
+    name: Build y unitarias - Generador de datos
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    defaults:
+      run:
+        working-directory: src/data-generator
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node (src/data-generator/.nvmrc)
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: src/data-generator/.nvmrc
+
+      # El generador no tiene dependencias que instalar ni build: solo pruebas unitarias.
+      - name: Pruebas unitarias
+        run: npm test

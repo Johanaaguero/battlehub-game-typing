@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.SignalR.Client;
 
-namespace TypingBattle.IntegrationTests;
+namespace TypingBattle.IntegrationTests.Hubs;
 
 /// <summary>Conexión al hub de la API de pruebas. El juego no se autentica: el jugador viaja en cada petición.</summary>
 public static class TestHub

@@ -30,7 +30,9 @@ Este servicio será responsable de:
 
 ```text
 battlehub-game-typing/
-├── .github/workflows/ci.yml           → pipeline de CI (backend, frontend, generador de datos e imágenes de Docker)
+├── .github/
+│   ├── actions/coverage-comment/      → acción que publica el comentario de cobertura en el PR
+│   └── workflows/                     → CI - Backend, CI - Frontend, CI - Generador de datos y Build y pruebas unitarias
 ├── docs/
 │   ├── api-resultados.md              → referencia de la API REST de resultados
 │   ├── api-typing-hub.md              → contrato del hub SignalR /hubs/typing
@@ -46,8 +48,8 @@ battlehub-game-typing/
 │   ├── data-generator/                → generador de datos de ejemplo (Node 22): registra partidas con POST /results, con su Dockerfile y pruebas
 │   └── frontend/                      → microfrontend de Typing (Aurelia 2 y Module Federation), con su Dockerfile y nginx.conf
 ├── tests/
-│   ├── TypingBattle.UnitTests/        → pruebas unitarias (Category=Unit)
-│   └── TypingBattle.IntegrationTests/ → pruebas de integración contra MySQL real (Category=Integration)
+│   ├── TypingBattle.UnitTests/        → pruebas unitarias con Moq, sin base de datos ni red (Category=Unit); sus carpetas (Common, Hubs, Persistence, Results) reflejan las de TypingBattle.Api
+│   └── TypingBattle.IntegrationTests/ → pruebas de integración contra MySQL real (Category=Integration); sus carpetas (Hubs, Results) reflejan las de TypingBattle.Api
 ├── .env.example                       → plantilla de la configuración del compose
 ├── docker-compose.yml                 → MySQL, API, microfrontend y datos de ejemplo en local (configuración en .env)
 ├── dotnet-tools.json                  → herramienta local dotnet-ef
@@ -439,11 +441,13 @@ El CI falla si el modelo cambió y falta la migración (`dotnet ef migrations ha
 
 #### Pruebas
 
-Las mismas que corre el CI:
+Dos proyectos separados (R-15), cuyas carpetas reflejan las de `src/backend/TypingBattle.Api` (R-16): `Hubs/TypingHub.cs` se prueba en `Hubs/TypingHubTests.cs`. Las mismas que corre el CI:
 
 ```bash
 dotnet test --filter "Category=Unit"
 ```
+
+Las unitarias no tocan MySQL, red ni archivos (R-17): lo que sale del proceso se simula con [Moq](https://github.com/devlooped/moq). Al hub se le simulan los clientes de SignalR, los grupos y el contexto de la conexión; al servicio de partidas, el servicio de resultados y el reloj; y a los endpoints, el servicio de resultados. La lógica de `ResultsService` con la base de datos se prueba solo en integración, con MySQL real.
 
 ```bash
 dotnet test --filter "Category=Integration"
@@ -479,7 +483,7 @@ npm test
 npm run build
 ```
 
-`npm test` corre primero el lint (ESLint y Stylelint) y luego las pruebas de Jest.
+`npm test` corre primero el lint (ESLint y Stylelint) y luego las pruebas de Jest, con el reporte de cobertura (`coverage/`: `lcov.info` y `coverage-summary.json`). Si la cobertura de sentencias, ramas, funciones o líneas baja del 85 %, Jest falla (R-19, R-22): el umbral está en `coverageThreshold`, dentro de la configuración de Jest de `package.json`.
 
 - **URL de la API.** Se fija al compilar con la variable `TYPING_API_URL`, que es obligatoria: sin ella fallan `npm start`, `npm run build` y el build de Docker. Por ejemplo, `TYPING_API_URL=https://typing.mi-dominio.com npm run build`.
 - **Identidad.** El juego no usa tokens ni habla con Auth0: manda el `currentUser` que le entrega el Shell en el contexto (ver [Identidad del jugador](#identidad-del-jugador)).
@@ -500,9 +504,30 @@ npm start
 
 Las pruebas (`npm test`) no necesitan la API: usan una falsa.
 
+## Integración continua (CI)
+
+El CI corre en GitHub Actions, con cuatro workflows en `.github/workflows/`. Los tres CI por componente corren **solo si cambia su parte** (filtros `paths`, R-24); «Build y pruebas unitarias» corre siempre.
+
+| Workflow | Cuándo corre | Qué hace |
+|---|---|---|
+| **CI - Backend** | Cambios en `src/backend/`, `tests/`, `TypingBattle.slnx`, `dotnet-tools.json`, `.editorconfig`, `.dockerignore`, `docker-compose.yml` o `.env.example` | Restore, build sin advertencias, lint (`dotnet format`), migraciones al día, pruebas unitarias y de integración con MySQL 8.4, cobertura, comentario en el PR y `docker build` de la API |
+| **CI - Frontend** | Cambios en `src/frontend/` | Install, lint (ESLint y Stylelint), build, pruebas unitarias con cobertura, comentario en el PR y `docker build` del frontend |
+| **CI - Generador de datos** | Cambios en `src/data-generator/` | Pruebas unitarias con cobertura y `docker build` del generador |
+| **Build y pruebas unitarias** | Siempre: cada PR hacia `main` y cada push a `main` | Solo build y pruebas unitarias de las tres partes, sin MySQL ni Docker: es el aviso rápido (R-21) |
+
+- **Ejecución manual (R-54):** los cuatro workflows tienen `workflow_dispatch`. En la pestaña **Actions**, elegir el workflow y pulsar **Run workflow**, sin hacer un commit.
+- **Cobertura mínima del 85 % (R-19, R-22):**
+  - Backend: líneas, con las pruebas unitarias y las de integración juntas, sin contar las migraciones ni el código generado. Las une ReportGenerator (herramienta fijada en `dotnet-tools.json`).
+  - Frontend: Jest exige 85 % en sentencias, ramas, funciones y líneas (`coverageThreshold` en `src/frontend/package.json`), sin excluir archivos de producción.
+  - Generador de datos: el ejecutor de pruebas de Node exige 85 % en líneas, ramas y funciones.
+  - En cada PR, CI - Backend y CI - Frontend publican un comentario con los porcentajes, que se actualiza en cada push, y fallan si no llegan al mínimo. Los informes completos quedan como artefactos de la ejecución.
+- **Merge bloqueado si falla el CI (R-25):** el ruleset de `main` exige los tres checks de «Build y pruebas unitarias» (`Build y unitarias - Backend`, `Build y unitarias - Frontend` y `Build y unitarias - Generador de datos`). Ese workflow corre siempre, así que un PR que solo cambia documentación no se queda esperando. Los CI por componente no son obligatorios porque, con un filtro `paths`, un check obligatorio que no se ejecuta deja el PR esperando; igual aparecen en el PR y hay que revisarlos antes de mezclar.
+- **Versiones (R-42, R-51):** Node 22 sale del `.nvmrc` de cada proyecto y .NET 10 de `dotnet-version: 10.0.x`.
+- Los comandos son los mismos que se corren en local: ver [Desarrollo (opcional)](#desarrollo-opcional) y [`docs/docker.md`](docs/docker.md).
+
 ## Flujo de trabajo
 
-- `main` está protegida: sin push directo; todo entra por Pull Request con CI en verde y al menos 1 aprobación.
+- `main` está protegida: sin push directo; todo entra por Pull Request con los checks de «Build y pruebas unitarias» en verde y al menos 1 aprobación.
 - Commits y títulos de PR en formato semántico: `<tipo>(<alcance opcional>): <descripción en imperativo>`. Tipos: `feat`, `fix`, `docs`, `test`, `refactor`, `chore`, `ci`, `perf`.
 - Las pruebas de .NET se etiquetan `[Trait("Category", "Unit")]` o `[Trait("Category", "Integration")]`, porque el CI las filtra por categoría.
 - Todas las fechas y timestamps van en UTC, formato ISO-8601 con sufijo `Z`.

@@ -4,7 +4,7 @@ using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.SignalR.Client;
 using TypingBattle.Api.Hubs;
 
-namespace TypingBattle.IntegrationTests;
+namespace TypingBattle.IntegrationTests.Hubs;
 
 /// <summary>
 /// Flujo real de una partida por el hub, sin preparar nada a mano: dos jugadores entran a una partida que

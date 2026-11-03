@@ -1,75 +1,90 @@
 ﻿using System.Text.Json;
+using Moq;
 using TypingBattle.Api.Hubs;
 using TypingBattle.Api.Results;
 
 namespace TypingBattle.UnitTests.Hubs;
 
+/// <summary>
+/// Las dependencias de <see cref="TypingMatchService"/> que salen del proceso, el servicio de resultados (MySQL) y el reloj,
+/// se simulan con Moq: estas pruebas no tocan base de datos, red ni la hora real.
+/// </summary>
 [Trait("Category", "Unit")]
 public class TypingMatchServiceTests
 {
     private static readonly string[] InvalidPlayerErrors = ["error"];
+    private static readonly DateTimeOffset Start = new(2026, 10, 3, 20, 0, 0, TimeSpan.Zero);
 
-    private static TimeProvider UtcTimeProvider() => TimeProvider.System;
-
-    private static TypingMatchStore CreateStoreWithMatch(string matchId)
+    /// <summary>Las solicitudes que el servicio de resultados simulado recibió, en orden.</summary>
+    private sealed class SavedRequests
     {
-        var store = new TypingMatchStore();
-        var m = store.GetOrCreate(matchId);
-        return store;
+        public List<SaveResultRequest> All { get; } = [];
+
+        public SaveResultRequest Last => All[^1];
     }
 
-    private sealed class FakeResultsService : IResultsService
+    private static Mock<TimeProvider> CreateClock(DateTimeOffset now)
     {
-        private readonly Queue<SaveResultOutcome> responses = new();
-        public SaveResultRequest? LastRequest { get; private set; }
+        var clock = new Mock<TimeProvider>();
+        clock.Setup(c => c.GetUtcNow()).Returns(now);
+        return clock;
+    }
 
-        public FakeResultsService(params SaveResultOutcome[] responses)
-        {
-            foreach (var r in responses) this.responses.Enqueue(r);
-        }
+    /// <summary>
+    /// Servicio de resultados simulado. Devuelve, en orden, los resultados indicados; cuando se acaban, acepta la
+    /// solicitud y la devuelve como creada. Todo lo que recibe queda en <paramref name="saved"/>.
+    /// </summary>
+    private static Mock<IResultsService> CreateResultsService(SavedRequests saved, params SaveResultOutcome[] outcomes)
+    {
+        var queue = new Queue<SaveResultOutcome>(outcomes);
+        var results = new Mock<IResultsService>();
+        results
+            .Setup(r => r.SaveAsync(It.IsAny<SaveResultRequest>(), It.IsAny<CancellationToken>()))
+            .Callback<SaveResultRequest, CancellationToken>((request, _) => saved.All.Add(request))
+            .ReturnsAsync((SaveResultRequest request, CancellationToken _) =>
+                queue.Count > 0 ? queue.Dequeue() : new SaveResultOutcome.Created(ToDto(request)));
+        return results;
+    }
 
-        public Task<SaveResultOutcome> SaveAsync(SaveResultRequest request, CancellationToken cancellationToken = default)
-        {
-            LastRequest = request;
-            if (responses.Count > 0)
-            {
-                return Task.FromResult(responses.Dequeue());
-            }
+    private static GameResultDto ToDto(SaveResultRequest request) => new(
+        request.MatchId!,
+        request.GameType!,
+        [.. request.Players!.Select(p => new PlayerResultDto(p!.UserId!, p.DisplayName ?? string.Empty, p.Score ?? 0))],
+        request.StartedAt!.Value,
+        request.FinishedAt!.Value,
+        request.WinnerUserId,
+        request.Metadata ?? JsonDocument.Parse("{}").RootElement);
 
-            // Default: return Created echoing back a simple GameResultDto
-            if (request.Players is not { } requestedPlayers)
-            {
-                throw new InvalidOperationException("The fake results service received a request without players.");
-            }
+    private static (TypingMatchService Service, TypingMatchStore Store, SavedRequests Saved, Mock<IResultsService> Results)
+        CreateService(DateTimeOffset? now = null, Mock<TimeProvider>? clock = null, params SaveResultOutcome[] outcomes)
+    {
+        var store = new TypingMatchStore();
+        var saved = new SavedRequests();
+        var results = CreateResultsService(saved, outcomes);
+        var service = new TypingMatchService(store, results.Object, (clock ?? CreateClock(now ?? Start)).Object);
+        return (service, store, saved, results);
+    }
 
-            var players = requestedPlayers.Select(p => p is null
-                ? throw new InvalidOperationException("The fake results service received a null player.")
-                : p.UserId is not { } userId
-                    ? throw new InvalidOperationException("The fake results service received a player without a user id.")
-                    : new PlayerResultDto(userId, p.DisplayName ?? string.Empty, p.Score ?? 0)).ToList();
-            var dto = new GameResultDto(
-                request.MatchId ?? throw new InvalidOperationException("The fake results service received a request without a match id."),
-                request.GameType ?? throw new InvalidOperationException("The fake results service received a request without a game type."),
-                players,
-                request.StartedAt ?? throw new InvalidOperationException("The fake results service received a request without a start time."),
-                request.FinishedAt ?? throw new InvalidOperationException("The fake results service received a request without a finish time."),
-                request.WinnerUserId,
-                request.Metadata ?? JsonDocument.Parse("{}").RootElement);
-            return Task.FromResult<SaveResultOutcome>(new SaveResultOutcome.Created(dto));
-        }
+    private static EndMatchRequest EndRequest(string matchId, string user = "u1") =>
+        new(matchId, user, null, null, null, null, null);
 
-        public Task<GameResultDto?> GetAsync(string matchId, CancellationToken cancellationToken = default) => Task.FromResult<GameResultDto?>(null);
-        public Task<IReadOnlyList<PlayerHistoryItemDto>> GetHistoryAsync(string userId, int? limit = null, int? offset = null, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<PlayerHistoryItemDto>>(Array.Empty<PlayerHistoryItemDto>());
-        public Task<PlayerStatsDto> GetStatsAsync(string userId, CancellationToken cancellationToken = default) =>
-            Task.FromResult(new PlayerStatsDto(userId, 0, 0, 0, 0, 0, null, null, null, null));
+    [Fact]
+    public void Constructor_Rejects_MissingDependencies()
+    {
+        var results = new Mock<IResultsService>().Object;
+        var clock = CreateClock(Start).Object;
+        var store = new TypingMatchStore();
+
+        Assert.Throws<ArgumentNullException>(() => new TypingMatchService(null!, results, clock));
+        Assert.Throws<ArgumentNullException>(() => new TypingMatchService(store, null!, clock));
+        Assert.Throws<ArgumentNullException>(() => new TypingMatchService(store, results, null!));
     }
 
     [Fact]
     public void JoinMatch_Succeeds_WhenMatchExists()
     {
-        var store = CreateStoreWithMatch("m-1");
-        var fake = new FakeResultsService();
-        var svc = new TypingMatchService(store, fake, UtcTimeProvider());
+        var (svc, store, _, _) = CreateService();
+        store.GetOrCreate("m-1");
 
         var ok = svc.TryJoin("m-1", "u1", "Ana");
 
@@ -79,19 +94,11 @@ public class TypingMatchServiceTests
         Assert.Equal("Ana", player.DisplayName);
     }
 
-    private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
-    {
-        public DateTimeOffset Now { get; set; } = now;
-
-        public override DateTimeOffset GetUtcNow() => Now;
-    }
-
     [Fact]
     public void JoinMatch_CreatesMatch_WhenItDoesNotExistYet()
     {
         // Matchmaking crea la sala; el servicio de Typing la conoce recién con el primer jugador que entra.
-        var store = new TypingMatchStore();
-        var svc = new TypingMatchService(store, new FakeResultsService(), UtcTimeProvider());
+        var (svc, store, _, _) = CreateService();
 
         var ok = svc.TryJoin("m-new", "u1", "Ana");
 
@@ -104,25 +111,23 @@ public class TypingMatchServiceTests
     [Fact]
     public void JoinMatch_RecordsStartedAt_OnFirstJoinOnly()
     {
-        var start = new DateTimeOffset(2026, 10, 3, 20, 0, 0, TimeSpan.Zero);
-        var clock = new FixedTimeProvider(start);
-        var store = new TypingMatchStore();
-        var svc = new TypingMatchService(store, new FakeResultsService(), clock);
+        var clock = CreateClock(Start);
+        var (svc, store, _, _) = CreateService(clock: clock);
 
         svc.TryJoin("m-start", "u1", "Ana");
-        clock.Now = start.AddSeconds(5);
+        clock.Setup(c => c.GetUtcNow()).Returns(Start.AddSeconds(5));
         svc.TryJoin("m-start", "u2", "Luis");
 
         Assert.True(store.TryGet("m-start", out var state));
-        Assert.Equal(start.UtcDateTime, state.StartedAt);
+        Assert.Equal(Start.UtcDateTime, state.StartedAt);
+        clock.Verify(c => c.GetUtcNow(), Times.Once);
     }
 
     [Fact]
     public void JoinMatch_Fails_WhenMatchAlreadyEnded()
     {
-        var store = CreateStoreWithMatch("m-ended");
-        store.GetOrCreate("m-ended").MarkFinished(DateTime.UtcNow);
-        var svc = new TypingMatchService(store, new FakeResultsService(), UtcTimeProvider());
+        var (svc, store, _, _) = CreateService();
+        store.GetOrCreate("m-ended").MarkFinished(Start.UtcDateTime);
 
         var ok = svc.TryJoin("m-ended", "u1", "Ana");
 
@@ -134,18 +139,61 @@ public class TypingMatchServiceTests
     [InlineData("m-1", " ")]
     public void JoinMatch_Fails_WhenIdsAreMissing(string matchId, string userId)
     {
-        var store = new TypingMatchStore();
-        var svc = new TypingMatchService(store, new FakeResultsService(), UtcTimeProvider());
+        var (svc, store, _, _) = CreateService();
 
         Assert.False(svc.TryJoin(matchId, userId, "Ana"));
         Assert.Empty(store.ListAll());
     }
 
     [Fact]
+    public void IsPlayer_IsTrueOnlyWhileThePlayerIsInTheMatch()
+    {
+        var (svc, _, _, _) = CreateService();
+
+        Assert.False(svc.IsPlayer("m-1", "u1"));
+        svc.TryJoin("m-1", "u1", "Ana");
+        Assert.True(svc.IsPlayer("m-1", "u1"));
+        svc.TryLeave("m-1", "u1");
+        Assert.False(svc.IsPlayer("m-1", "u1"));
+    }
+
+    [Theory]
+    [InlineData("", "u1")]
+    [InlineData("m-1", " ")]
+    public void IsPlayer_IsFalse_WhenIdsAreMissing(string matchId, string userId)
+    {
+        var (svc, _, _, _) = CreateService();
+        svc.TryJoin("m-1", "u1", "Ana");
+
+        Assert.False(svc.IsPlayer(matchId, userId));
+    }
+
+    [Fact]
+    public void LeaveMatch_RemovesPlayer()
+    {
+        var (svc, store, _, _) = CreateService();
+
+        svc.TryJoin("m-2", "u1", "Ana");
+        var left = svc.TryLeave("m-2", "u1");
+
+        Assert.True(left);
+        Assert.True(store.TryGet("m-2", out var state));
+        Assert.False(state.TryGetPlayer("u1", out _));
+    }
+
+    [Fact]
+    public void LeaveMatch_Fails_WhenMatchDoesNotExist()
+    {
+        var (svc, _, _, _) = CreateService();
+
+        Assert.False(svc.TryLeave("m-x", "u1"));
+    }
+
+    [Fact]
     public void UpdateMetrics_CalculatesScore_WhenClientDoesNotSendIt()
     {
-        var store = CreateStoreWithMatch("m-score");
-        var svc = new TypingMatchService(store, new FakeResultsService(), UtcTimeProvider());
+        var (svc, store, _, _) = CreateService();
+        store.GetOrCreate("m-score");
 
         Assert.True(svc.TryUpdatePlayerMetrics("m-score", "u1", null, 60.0, 100.0, out var first));
         // Solo cambia la precisión: el puntaje se recalcula con la velocidad ya guardada.
@@ -159,57 +207,10 @@ public class TypingMatchServiceTests
     }
 
     [Fact]
-    public async Task EndMatch_UsesJoinTime_AsStartedAt()
-    {
-        var start = new DateTimeOffset(2026, 10, 3, 20, 0, 0, TimeSpan.Zero);
-        var clock = new FixedTimeProvider(start);
-        var store = new TypingMatchStore();
-        var fake = new FakeResultsService();
-        var svc = new TypingMatchService(store, fake, clock);
-
-        svc.TryJoin("m-times", "u1", "Ana");
-        clock.Now = start.AddSeconds(60);
-        await svc.EndMatchAsync(new EndMatchRequest("m-times", "u1", null, null, null, null, null));
-
-        Assert.Equal(start.UtcDateTime, fake.LastRequest!.StartedAt);
-        Assert.Equal(start.AddSeconds(60).UtcDateTime, fake.LastRequest.FinishedAt);
-    }
-
-    [Fact]
-    public async Task EndMatch_UsesUserId_WhenPlayerHasNoDisplayName()
-    {
-        var store = CreateStoreWithMatch("m-noname");
-        store.GetOrCreate("m-noname").GetOrCreatePlayer("u1").UpdateMetrics(10, null, null);
-        var fake = new FakeResultsService();
-        var svc = new TypingMatchService(store, fake, UtcTimeProvider());
-
-        await svc.EndMatchAsync(new EndMatchRequest("m-noname", "u1", null, null, null, null, null));
-
-        var player = Assert.Single(fake.LastRequest!.Players!);
-        Assert.Equal("u1", player!.DisplayName);
-    }
-
-    [Fact]
-    public void LeaveMatch_RemovesPlayer()
-    {
-        var store = CreateStoreWithMatch("m-2");
-        var fake = new FakeResultsService();
-        var svc = new TypingMatchService(store, fake, UtcTimeProvider());
-
-        svc.TryJoin("m-2", "u1", "Ana");
-        var left = svc.TryLeave("m-2", "u1");
-
-        Assert.True(left);
-        Assert.True(store.TryGet("m-2", out var state));
-        Assert.False(state.TryGetPlayer("u1", out _));
-    }
-
-    [Fact]
     public void UpdateMetrics_CreatesPlayer_WhenAbsent()
     {
-        var store = CreateStoreWithMatch("m-3");
-        var fake = new FakeResultsService();
-        var svc = new TypingMatchService(store, fake, UtcTimeProvider());
+        var (svc, store, _, _) = CreateService();
+        store.GetOrCreate("m-3");
 
         var ok = svc.TryUpdatePlayerMetrics("m-3", "u42", 123, 45.6, 98.7);
 
@@ -224,9 +225,7 @@ public class TypingMatchServiceTests
     [Fact]
     public void UpdateMetrics_Fails_WhenMatchNotExist()
     {
-        var store = new TypingMatchStore();
-        var fake = new FakeResultsService();
-        var svc = new TypingMatchService(store, fake, UtcTimeProvider());
+        var (svc, _, _, _) = CreateService();
 
         var ok = svc.TryUpdatePlayerMetrics("m-x", "u1", 1, null, null);
 
@@ -234,29 +233,103 @@ public class TypingMatchServiceTests
     }
 
     [Fact]
+    public void WpmAndAccuracy_Are_NotCalculated_ServerSide()
+    {
+        // The service stores and forwards WPM/accuracy provided by clients; it does not compute them.
+        var (svc, store, _, _) = CreateService();
+        store.GetOrCreate("m-7");
+
+        svc.TryUpdatePlayerMetrics("m-7", "u1", 42, 55.5, 99.9);
+
+        var p = store.GetOrCreate("m-7").GetOrCreatePlayer("u1");
+        Assert.Equal(55.5, p.Wpm);
+        Assert.Equal(99.9, p.Accuracy);
+    }
+
+    [Fact]
+    public async Task EndMatch_UsesJoinTime_AsStartedAt()
+    {
+        var clock = CreateClock(Start);
+        var (svc, _, saved, _) = CreateService(clock: clock);
+
+        svc.TryJoin("m-times", "u1", "Ana");
+        clock.Setup(c => c.GetUtcNow()).Returns(Start.AddSeconds(60));
+        await svc.EndMatchAsync(EndRequest("m-times"));
+
+        Assert.Equal(Start.UtcDateTime, saved.Last.StartedAt);
+        Assert.Equal(Start.AddSeconds(60).UtcDateTime, saved.Last.FinishedAt);
+    }
+
+    [Fact]
+    public async Task EndMatch_UsesTheDatesOfTheRequest_WhenTheyAreSent()
+    {
+        var (svc, _, saved, _) = CreateService();
+        svc.TryJoin("m-dates", "u1", "Ana");
+        var request = new EndMatchRequest(
+            "m-dates", "u1", null, Start.UtcDateTime.AddMinutes(-2), Start.UtcDateTime.AddMinutes(-1), null, null);
+
+        await svc.EndMatchAsync(request);
+
+        Assert.Equal(request.StartedAt, saved.Last.StartedAt);
+        Assert.Equal(request.FinishedAt, saved.Last.FinishedAt);
+    }
+
+    [Fact]
+    public async Task EndMatch_UsesUserId_WhenPlayerHasNoDisplayName()
+    {
+        var (svc, store, saved, _) = CreateService();
+        store.GetOrCreate("m-noname").GetOrCreatePlayer("u1").UpdateMetrics(10, null, null);
+
+        await svc.EndMatchAsync(EndRequest("m-noname"));
+
+        var player = Assert.Single(saved.Last.Players!);
+        Assert.Equal("u1", player!.DisplayName);
+    }
+
+    [Fact]
+    public async Task EndMatch_RanksPlayersByScore_AndTheWinnerIsTheHighestScore()
+    {
+        var (svc, store, saved, _) = CreateService();
+        var state = store.GetOrCreate("m-rank");
+        state.GetOrCreatePlayer("u1", "Ana").UpdateMetrics(300, 30.0, 90.0);
+        state.GetOrCreatePlayer("u2", "Luis").UpdateMetrics(600, 60.0, 100.0);
+
+        await svc.EndMatchAsync(EndRequest("m-rank"));
+
+        Assert.Equal(["u2", "u1"], saved.Last.Players!.Select(p => p!.UserId));
+        Assert.Equal("u2", saved.Last.WinnerUserId);
+    }
+
+    [Fact]
+    public async Task EndMatch_RespectsTheWinnerOfTheRequest_WhenItIsSent()
+    {
+        var (svc, store, saved, _) = CreateService();
+        var state = store.GetOrCreate("m-winner");
+        state.GetOrCreatePlayer("u1", "Ana").UpdateMetrics(300, null, null);
+        state.GetOrCreatePlayer("u2", "Luis").UpdateMetrics(600, null, null);
+
+        await svc.EndMatchAsync(EndRequest("m-winner") with { WinnerUserId = "u1" });
+
+        Assert.Equal("u1", saved.Last.WinnerUserId);
+    }
+
+    [Fact]
     public async Task EndMatch_Builds_SaveRequest_And_Returns_Created()
     {
-        var store = CreateStoreWithMatch("m-4");
-        // populate players
+        var (svc, store, saved, results) = CreateService();
         var state = store.GetOrCreate("m-4");
-        var p1 = state.GetOrCreatePlayer("u1", "Ana");
-        p1.UpdateMetrics(300, 30.0, 90.0);
-        var p2 = state.GetOrCreatePlayer("u2", "Luis");
-        p2.UpdateMetrics(600, 60.0, 100.0);
+        state.GetOrCreatePlayer("u1", "Ana").UpdateMetrics(300, 30.0, 90.0);
+        state.GetOrCreatePlayer("u2", "Luis").UpdateMetrics(600, 60.0, 100.0);
 
-        var fake = new FakeResultsService();
-        var svc = new TypingMatchService(store, fake, UtcTimeProvider());
-
-        var req = new EndMatchRequest("m-4", "u1", null, null, null, null, null);
-        var outcome = await svc.EndMatchAsync(req);
+        var outcome = await svc.EndMatchAsync(EndRequest("m-4"));
 
         Assert.IsType<SaveResultOutcome.Created>(outcome);
-        Assert.NotNull(fake.LastRequest);
-        Assert.Equal("m-4", fake.LastRequest!.MatchId);
-        Assert.Equal(ResultValidator.GameType, fake.LastRequest.GameType);
-        Assert.Equal(2, fake.LastRequest.Players!.Count);
+        results.Verify(r => r.SaveAsync(It.IsAny<SaveResultRequest>(), It.IsAny<CancellationToken>()), Times.Once);
+        Assert.Equal("m-4", saved.Last.MatchId);
+        Assert.Equal(ResultValidator.GameType, saved.Last.GameType);
+        Assert.Equal(2, saved.Last.Players!.Count);
         // metadata contains players with wpm/accuracy
-        var meta = fake.LastRequest.Metadata;
+        var meta = saved.Last.Metadata;
         Assert.True(meta.HasValue);
         Assert.Equal(JsonValueKind.Object, meta.Value.ValueKind);
         Assert.True(meta.Value.TryGetProperty("players", out var playersArr));
@@ -264,64 +337,70 @@ public class TypingMatchServiceTests
     }
 
     [Fact]
+    public async Task EndMatch_PassesTheCancellationToken_ToTheResultsService()
+    {
+        var (svc, store, _, results) = CreateService();
+        store.GetOrCreate("m-token");
+        using var cts = new CancellationTokenSource();
+
+        await svc.EndMatchAsync(EndRequest("m-token"), cts.Token);
+
+        results.Verify(r => r.SaveAsync(It.IsAny<SaveResultRequest>(), cts.Token), Times.Once);
+    }
+
+    [Fact]
+    public async Task EndMatch_DoesNotCallTheResultsService_WhenTheMatchDoesNotExist()
+    {
+        var (svc, _, _, results) = CreateService();
+
+        var outcome = await svc.EndMatchAsync(EndRequest("m-missing"));
+
+        var invalid = Assert.IsType<SaveResultOutcome.Invalid>(outcome);
+        Assert.Equal(["Partida no encontrada."], invalid.Errors["matchId"]);
+        results.Verify(r => r.SaveAsync(It.IsAny<SaveResultRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task EndMatch_Rejects_ANullRequest()
+    {
+        var (svc, _, _, _) = CreateService();
+
+        await Assert.ThrowsAsync<ArgumentNullException>(() => svc.EndMatchAsync(null!));
+    }
+
+    [Fact]
     public async Task EndMatch_Returns_AlreadyExists_On_Second_Call()
     {
-        var store = CreateStoreWithMatch("m-5");
-        var state = store.GetOrCreate("m-5");
-        state.GetOrCreatePlayer("u1").UpdateMetrics(10, null, null);
-
-        // Prepare fake to return Created then AlreadyExists
-        var createdDto = new GameResultDto(
+        var created = new GameResultDto(
             "m-5",
             ResultValidator.GameType,
             [new PlayerResultDto("u1", "u1", 10)],
-            DateTime.UtcNow,
-            DateTime.UtcNow,
+            Start.UtcDateTime,
+            Start.UtcDateTime,
             "u1",
             JsonDocument.Parse("{}").RootElement);
-        var fake = new FakeResultsService(new SaveResultOutcome.Created(createdDto), new SaveResultOutcome.AlreadyExists("m-5"));
-        var svc = new TypingMatchService(store, fake, UtcTimeProvider());
+        var (svc, store, _, results) = CreateService(
+            outcomes: [new SaveResultOutcome.Created(created), new SaveResultOutcome.AlreadyExists("m-5")]);
+        store.GetOrCreate("m-5").GetOrCreatePlayer("u1").UpdateMetrics(10, null, null);
 
-        var req = new EndMatchRequest("m-5", "u1", null, null, null, null, null);
-        var first = await svc.EndMatchAsync(req);
-        var second = await svc.EndMatchAsync(req);
+        var first = await svc.EndMatchAsync(EndRequest("m-5"));
+        var second = await svc.EndMatchAsync(EndRequest("m-5"));
 
         Assert.IsType<SaveResultOutcome.Created>(first);
         Assert.IsType<SaveResultOutcome.AlreadyExists>(second);
+        results.Verify(r => r.SaveAsync(It.IsAny<SaveResultRequest>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
     }
 
     [Fact]
     public async Task EndMatch_Returns_Invalid_When_ServiceReportsInvalid()
     {
-        var store = CreateStoreWithMatch("m-6");
-        var state = store.GetOrCreate("m-6");
-        state.GetOrCreatePlayer("u1").UpdateMetrics(1, null, null);
-
         var invalid = new SaveResultOutcome.Invalid(new Dictionary<string, string[]> { ["players"] = InvalidPlayerErrors });
-        var fake = new FakeResultsService(invalid);
-        var svc = new TypingMatchService(store, fake, UtcTimeProvider());
+        var (svc, store, _, _) = CreateService(outcomes: [invalid]);
+        store.GetOrCreate("m-6").GetOrCreatePlayer("u1").UpdateMetrics(1, null, null);
 
-        var req = new EndMatchRequest("m-6", "u1", null, null, null, null, null);
-        var outcome = await svc.EndMatchAsync(req);
+        var outcome = await svc.EndMatchAsync(EndRequest("m-6"));
 
-        Assert.IsType<SaveResultOutcome.Invalid>(outcome);
-        var invalidOutcome = (SaveResultOutcome.Invalid)outcome;
+        var invalidOutcome = Assert.IsType<SaveResultOutcome.Invalid>(outcome);
         Assert.Contains("players", invalidOutcome.Errors.Keys);
-    }
-
-    [Fact]
-    public void WpmAndAccuracy_Are_NotCalculated_ServerSide()
-    {
-        // The service stores and forwards WPM/accuracy provided by clients; it does not compute them.
-        var store = CreateStoreWithMatch("m-7");
-        var fake = new FakeResultsService();
-        var svc = new TypingMatchService(store, fake, UtcTimeProvider());
-
-        svc.TryUpdatePlayerMetrics("m-7", "u1", 42, 55.5, 99.9);
-
-        var state = store.GetOrCreate("m-7");
-        var p = state.GetOrCreatePlayer("u1");
-        Assert.Equal(55.5, p.Wpm);
-        Assert.Equal(99.9, p.Accuracy);
     }
 }
