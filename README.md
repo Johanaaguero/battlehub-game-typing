@@ -247,12 +247,14 @@ Typing usa **MySQL 8.4** con **Entity Framework Core** (proveedor oficial `MySql
 
 **Qué guarda**
 
-| Tabla | Contenido |
-|---|---|
-| `game_results` | Una fila por partida: `Id` (GUID, clave), `MatchId` (único), `GameType`, `StartedAt`, `FinishedAt`, `WinnerUserId`, `PlayersCount`, `MetadataJson` (`json`) y `CreatedAt` |
-| `player_results` | Una fila por jugador y partida (único `MatchId` + `UserId`), con `Score`, `Position`, `Wpm` y `Accuracy` copiados del `metadata` para consultar en SQL. Índice por `UserId` |
+| Tabla | Entidad (EF Core) | Contenido |
+|---|---|---|
+| `game_results` | `GameResultEntity` | Una fila por partida: `Id` (GUID, clave), `MatchId` (único), `GameType`, `StartedAt`, `FinishedAt`, `WinnerUserId`, `PlayersCount`, `MetadataJson` (`json`) y `CreatedAt` |
+| `player_results` | `PlayerResultEntity` | Una fila por jugador y partida (único `MatchId` + `UserId`), con `Score`, `Position`, `Wpm` y `Accuracy` copiados del `metadata` para consultar en SQL. Índice por `UserId` |
 
 Las fechas son `datetime(6)` guardadas en UTC. Los ids (`MatchId`, `UserId`, `WinnerUserId`) usan la intercalación `utf8mb4_bin`, que distingue mayúsculas y minúsculas. Solo la API se conecta a MySQL: la base no se expone al navegador.
+
+**Qué no se guarda.** Las partidas en curso (quién entró y su puntaje parcial) viven en memoria, en `TypingMatchStore`. Es estado de juego y se pierde si la API se reinicia; solo el resultado final llega a MySQL.
 
 ## Variables de entorno
 
@@ -349,7 +351,7 @@ Los puertos de todos los servicios están en [Puertos](#puertos).
 
 Para probarlo juntos: levantar Typing con `docker compose up -d --build` (ver [Cómo correrlo](#cómo-correrlo)) y el Shell con `npm start` en su repo. La API ya permite los orígenes `http://localhost:4000` y `http://localhost:4001`.
 
-El contrato está en el README y en `src/games/game-contracts.ts`, `game-events.ts` y `game-host.ts` del [PR #6 del Shell](https://github.com/KeynerMC/battlehub-shell/pull/6) (referencia `83e5401`). Typing ya lo implementa, así que necesita esa versión del Shell: la de su `main` todavía no entrega `events` ni `mode`, y `initialize()` rechaza ese contexto.
+El contrato está en el README y en `src/games/game-contracts.ts`, `game-events.ts` y `game-host.ts` del Shell, que ya mezcló su [PR #6](https://github.com/KeynerMC/battlehub-shell/pull/6) en `main` (commit `478f79c`). Typing implementa ese contrato: con una versión anterior del Shell, `initialize()` rechaza el contexto porque no trae `events` ni `mode`.
 
 #### Contexto que entrega el Shell
 
@@ -360,12 +362,36 @@ El contrato está en el README y en `src/games/game-contracts.ts`, `game-events.
 | `events` | `EventTarget` propio de la partida | `EventTarget` propio de la práctica |
 | `matchId` | Id real de la sala | No existe |
 | `mode` | No existe | `practice` |
+| `participants` | Foto de los integrantes de la sala al iniciar (opcional; Typing no la usa) | No existe |
 
 `initialize()` rechaza un contexto con otro `gameType`, sin usuario, sin `events`, sin `mode` ni `matchId`, o con `mode: 'practice'` y `matchId`. El juego nunca inventa un `matchId` ni recibe tokens.
 
-- **Práctica (R-44):** no conecta con SignalR ni llama a la API, no guarda nada y no emite el fin de partida. Permite escribir, ver el resultado local, volver a jugar, pausar y reanudar.
-- **Playground (R-34):** sin Shell, el botón «Iniciar práctica» de la página del juego arma el mismo contexto de práctica con un jugador local.
 - **Ciclo de vida:** el Shell llama a `initialize()` y luego a `start()`; el juego no escucha `battlehub:game-start`. `start()` también reanuda: no vuelve a conectar ni a unirse si la conexión sigue abierta, ni duplica el temporizador. `dispose()` detiene el temporizador y cierra la conexión.
+
+#### Modo práctica (R-44)
+
+El modo práctica está integrado con el Shell y permite jugar solo, sin crear una sala de Matchmaking ni registrar resultados.
+
+El Shell lo abre desde el botón **Practicar** del catálogo (ruta `/practice/typing`), solo para los usuarios que tienen el permiso `games.typing.play` según el Profile Service. Le entrega al juego un contexto con `mode: "practice"` y sin `matchId`.
+
+En este modo el juego corre completo en el navegador: no se conecta al hub, no llama a la API, no guarda la partida y no emite `battlehub:game-finished`, porque no hay sala que cerrar. Desde el Shell se puede pausar, reanudar y reiniciar.
+
+#### Modo playground (R-34)
+
+El juego se puede jugar por sí solo, sin Shell, sin Auth0 y sin ningún otro servicio.
+
+1. Tener el `.env` creado (`cp .env.example .env`; Compose lo lee completo aunque se levante un solo servicio) y levantar solo el microfrontend:
+
+   ```bash
+   docker compose up -d --build frontend
+   ```
+
+   Si ya está corriendo el entorno completo con `docker compose up`, el playground también está disponible.
+
+2. Abrir `http://localhost:4001` en el navegador (el puerto de `FRONTEND_PORT`).
+3. Pulsar **Iniciar práctica**.
+
+La partida de un jugador local corre completa en el navegador: no llama a la API, no se conecta al hub y no guarda resultados. Al terminar muestra el resultado y permite jugar de nuevo con **Volver a jugar**. Arma el mismo contexto de práctica que entrega el Shell.
 
 **Matchmaking (Equipo 2).** Typing no llama a Matchmaking (R-46). Al terminar la partida, el juego avisa al Shell con un evento y el Shell notifica a Matchmaking; la API solo guarda el resultado en MySQL.
 
