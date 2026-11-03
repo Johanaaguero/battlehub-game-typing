@@ -133,5 +133,6 @@ La imagen de la API no lleva configuración: al ejecutarla hay que pasar al meno
 | `typing-battle-data-generator` aparece como `Exited (1)` | La API no respondió a tiempo o rechazó las partidas | Ver el motivo con `docker compose logs data-generator`; si la API tardó, subir `DATA_WAIT_SECONDS` en `.env` y `docker compose up -d` |
 | El historial de `demo-ana` está vacío | El generador no terminó o falló | `docker compose logs data-generator`. Al terminar sin errores, `docker compose up -d` lo vuelve a correr sin duplicar datos |
 | La API se detiene con `Access denied` de MySQL después de cambiar `.env` | MySQL aplica las contraseñas solo al crear el volumen | `docker compose down -v` (borra los datos) y volver a levantar |
+| La API se detiene con `Table 'game_results' already exists` | La base se creó con el historial de migraciones anterior, que se rehízo (una migración por tabla) | `docker compose down -v` (borra los datos, que se vuelven a generar) y `docker compose up -d --build` |
 | El navegador bloquea las llamadas del juego a la API (error de CORS en la consola) | El origen del Shell no está permitido en la API | En `.env`: `CORS_SHELL_ORIGIN` con el origen del Shell; luego `docker compose up -d api` |
 | El juego llama a una URL de la API equivocada | `TYPING_API_URL` quedó fija al construir la imagen | `docker compose up -d --build frontend` |

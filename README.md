@@ -235,7 +235,7 @@ Los puertos de Typing se cambian en el `.env` (`MYSQL_PORT`, `API_PORT` y `FRONT
 
 ## Base de datos
 
-Typing usa **MySQL 8.4** con **Entity Framework Core** (proveedor oficial `MySql.EntityFrameworkCore`). El esquema se crea y evoluciona **solo con migraciones**, que están en `src/backend/TypingBattle.Api/Persistence/Migrations`.
+Typing usa **MySQL 8.4** con **Entity Framework Core** (proveedor oficial `MySql.EntityFrameworkCore`). El esquema se crea y evoluciona **solo con migraciones**, que están en `src/backend/TypingBattle.Api/Persistence/Migrations`: una por tabla, `CreateGameResults` y `CreatePlayerResults` (R-14). Ninguna clave primaria es `varchar` (R-13).
 
 **Por qué MySQL.** Varios jugadores guardan resultados al mismo tiempo, así que se necesita un motor que maneje accesos concurrentes y transacciones para mantener la integridad de los datos, con buena integración con .NET y EF Core. Los datos de partidas y jugadores encajan bien en un modelo relacional. Se descartaron:
 
@@ -417,7 +417,7 @@ El hub `/hubs/typing` corre en el mismo proceso y guarda el resultado al termina
 
 #### Migraciones
 
-El esquema solo cambia con migraciones de EF Core. La herramienta `dotnet-ef` está fijada en `dotnet-tools.json`:
+El esquema solo cambia con migraciones de EF Core, y cada migración crea o cambia una sola tabla. El historial se rehízo en la Etapa 2 (antes había una migración con las dos tablas y una clave `varchar`); el esquema resultante es el mismo. **Una base creada con el historial anterior no sirve**: la API se detiene al arrancar con `Table 'game_results' already exists`. Hay que borrar el volumen y volver a levantar: `docker compose down -v` y luego `docker compose up -d --build`. La herramienta `dotnet-ef` está fijada en `dotnet-tools.json`:
 
 ```bash
 dotnet tool restore
