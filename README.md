@@ -48,8 +48,8 @@ battlehub-game-typing/
 │   ├── data-generator/                → generador de datos de ejemplo (Node 22): registra partidas con POST /results, con su Dockerfile y pruebas
 │   └── frontend/                      → microfrontend de Typing (Aurelia 2 y Module Federation), con su Dockerfile y nginx.conf
 ├── tests/
-│   ├── TypingBattle.UnitTests/        → pruebas unitarias (Category=Unit)
-│   └── TypingBattle.IntegrationTests/ → pruebas de integración contra MySQL real (Category=Integration)
+│   ├── TypingBattle.UnitTests/        → pruebas unitarias con Moq, sin base de datos ni red (Category=Unit); sus carpetas (Common, Hubs, Persistence, Results) reflejan las de TypingBattle.Api
+│   └── TypingBattle.IntegrationTests/ → pruebas de integración contra MySQL real (Category=Integration); sus carpetas (Hubs, Results) reflejan las de TypingBattle.Api
 ├── .env.example                       → plantilla de la configuración del compose
 ├── docker-compose.yml                 → MySQL, API, microfrontend y datos de ejemplo en local (configuración en .env)
 ├── dotnet-tools.json                  → herramienta local dotnet-ef
@@ -441,11 +441,13 @@ El CI falla si el modelo cambió y falta la migración (`dotnet ef migrations ha
 
 #### Pruebas
 
-Las mismas que corre el CI:
+Dos proyectos separados (R-15), cuyas carpetas reflejan las de `src/backend/TypingBattle.Api` (R-16): `Hubs/TypingHub.cs` se prueba en `Hubs/TypingHubTests.cs`. Las mismas que corre el CI:
 
 ```bash
 dotnet test --filter "Category=Unit"
 ```
+
+Las unitarias no tocan MySQL, red ni archivos (R-17): lo que sale del proceso se simula con [Moq](https://github.com/devlooped/moq). Al hub se le simulan los clientes de SignalR, los grupos y el contexto de la conexión; al servicio de partidas, el servicio de resultados y el reloj; y a los endpoints, el servicio de resultados. La lógica de `ResultsService` con la base de datos se prueba solo en integración, con MySQL real.
 
 ```bash
 dotnet test --filter "Category=Integration"
