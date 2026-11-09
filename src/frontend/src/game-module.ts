@@ -94,7 +94,7 @@ export class GameModule implements IGameModule {
 
     public incorrectCharacters = 0;
 
-    public accuracy = 100;
+    public accuracy = 0;
 
     // ---------------------------------------------------------
     // TEMPORIZADOR
@@ -235,7 +235,7 @@ export class GameModule implements IGameModule {
             displayName: context.currentUser.displayName,
             score: null,
             wpm: 0,
-            accuracy: 100,
+            accuracy: 0,
         }];
 
         if (!this.isPracticeMode) {
@@ -287,7 +287,7 @@ export class GameModule implements IGameModule {
                 displayName: this.context.currentUser.displayName,
                 score: null,
                 wpm: 0,
-                accuracy: 100,
+                accuracy: 0,
             },
         ];
 
@@ -677,7 +677,7 @@ export class GameModule implements IGameModule {
 
             this.incorrectCharacters = 0;
 
-            this.accuracy = 100;
+            this.accuracy = 0;
 
             this.wpm = 0;
 
@@ -786,7 +786,7 @@ export class GameModule implements IGameModule {
             this.incorrectCharacters;
 
         if (totalTyped === 0) {
-            this.accuracy = 100;
+            this.accuracy = 0;
 
             return;
         }
@@ -986,7 +986,7 @@ export class GameModule implements IGameModule {
 
         this.incorrectCharacters = 0;
 
-        this.accuracy = 100;
+        this.accuracy = 0;
 
         this.wpm = 0;
 

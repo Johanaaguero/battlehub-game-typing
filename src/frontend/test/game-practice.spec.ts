@@ -93,7 +93,7 @@ describe('práctica individual de Typing Battle', () => {
         expect(game.progress).toBe(0);
         expect(game.correctCharacters).toBe(0);
         expect(game.incorrectCharacters).toBe(0);
-        expect(game.accuracy).toBe(100);
+        expect(game.accuracy).toBe(0);
         expect(game.timeRemaining).toBe(60);
         expect(game.canType).toBe(true);
     });

@@ -63,14 +63,14 @@ describe('métricas al escribir', () => {
     expect(game.canType).toBe(true);
   });
 
-  it('sin nada escrito la precisión es 100 y no hay velocidad', async () => {
+  it('sin nada escrito la precisión es 0 y no hay velocidad', async () => {
     const game = await startMatch();
     await jest.advanceTimersByTimeAsync(10_000);
     game.typedText = '';
 
     game.handleTyping();
 
-    expect(game.accuracy).toBe(100);
+    expect(game.accuracy).toBe(0);
     expect(game.wpm).toBe(0);
     expect(game.progress).toBe(0);
   });
@@ -118,7 +118,7 @@ describe('métricas al escribir', () => {
     expect(game.progress).toBe(0);
     expect(game.correctCharacters).toBe(0);
     expect(game.incorrectCharacters).toBe(0);
-    expect(game.accuracy).toBe(100);
+    expect(game.accuracy).toBe(0);
     expect(game.wpm).toBe(0);
   });
 
