@@ -13,6 +13,24 @@ typing-game-module {
     min-height: 0;
 }
 
+/*
+ * Con el diseño compacto del Shell (ventana de al menos 1366 × 768 px CSS) el área tiene altura definida y el juego
+ * la llena. En ventanas menores, o con zoom del navegador, el Shell solo le reserva un mínimo de 700 px sin altura
+ * definida: el juego se quedaba en el alto de su contenido y sobraba espacio. Se ocupa ese mínimo (700 px menos el
+ * relleno y el borde del área, 650 px) y la zona de escritura crece con él.
+ */
+@media (width < 1366px), (height < 768px) {
+    game-host typing-game-module {
+        display: flex;
+        flex-direction: column;
+        min-height: 650px;
+    }
+
+    game-host typing-game-module .typing-game {
+        flex: 1 0 auto;
+    }
+}
+
 .typing-game {
     /* Variables del juego: definidas en su raíz para no afectar al Shell. */
     --arena-bg: #050817;
