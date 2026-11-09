@@ -13,6 +13,7 @@ import {
 
 import { RESULTS_API_URL, TYPING_HUB_URL } from './config';
 import { SignalRClient } from './signalr-client';
+import { TYPING_TEXTS, randomTypingText, textForMatch } from './typing-texts';
 
 interface TypingPlayer {
     userId: string;
@@ -83,8 +84,7 @@ export class GameModule implements IGameModule {
     // INTERFAZ - WAYNER
     // =========================================================
 
-    public targetText =
-        'La tecnología permite conectar personas, compartir información y crear soluciones para los desafíos del mundo moderno.';
+    public targetText = TYPING_TEXTS[0];
 
     public typedText = '';
 
@@ -225,6 +225,8 @@ export class GameModule implements IGameModule {
         // Se conserva íntegramente la identidad autenticada que entrega el Shell.
         this.isPracticeMode = isPractice;
         this.context = context;
+        // Una sala escribe el mismo texto en todos los navegadores (sale del matchId); la práctica, uno al azar.
+        this.targetText = matchId ? textForMatch(matchId) : randomTypingText(this.targetText);
         this.running = false;
         this.joinedMatch = false;
         this.stopTimer();
@@ -262,6 +264,7 @@ export class GameModule implements IGameModule {
 
         this.stopTimer();
         this.isPracticeMode = true;
+        this.targetText = randomTypingText(this.targetText);
 
         // El playground independiente crea un jugador local. Si la práctica
         // fue inicializada por el Shell, se conserva su identidad real también

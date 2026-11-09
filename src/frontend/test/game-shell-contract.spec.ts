@@ -1,4 +1,5 @@
 import { GameModule } from '../src/game-module';
+import { TYPING_TEXTS } from '../src/typing-texts';
 import {
   GAME_FINISHED_EVENT,
   type GameContext,
@@ -88,6 +89,20 @@ describe('contrato del Shell: contexto de lanzamiento', () => {
 
     expect(game.isPracticeMode).toBe(false);
     expect(game.context).toBeNull();
+  });
+
+  it('los jugadores de una misma sala reciben el mismo texto, y la práctica uno al azar', async () => {
+    const primero = new GameModule();
+    const segundo = new GameModule();
+    const practica = new GameModule();
+
+    await primero.initialize(matchContext());
+    await segundo.initialize({ ...matchContext(), currentUser: { id: 'user-beto', displayName: 'Beto' } });
+    await practica.initialize(practiceContext());
+
+    expect(primero.targetText).toBe(segundo.targetText);
+    expect(TYPING_TEXTS).toContain(primero.targetText);
+    expect(TYPING_TEXTS).toContain(practica.targetText);
   });
 
   it('una partida normal con matchId no es práctica', async () => {
