@@ -120,18 +120,52 @@
             if.bind="!context"
             class="typing-game-waiting-message">
 
-            <p>Esperando información de la partida...</p>
+            <div class="typing-game-waiting-card">
 
-            <p>También podés practicar por tu cuenta:</p>
+                <div class="typing-game-waiting-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2.5" y="6" width="19" height="12" rx="2.5"></rect>
+                        <path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M6 14h.01M18 14h.01M9.5 14h5"></path>
+                    </svg>
+                </div>
 
-            <button
-                type="button"
-                class="typing-game-refresh-button"
-                click.trigger="startPractice()">
+                <span class="typing-game-waiting-kicker">
+                    MODO PRÁCTICA
+                </span>
 
-                INICIAR PRÁCTICA
+                <h2 class="typing-game-waiting-title">
+                    Listo para escribir
+                </h2>
 
-            </button>
+                <p class="typing-game-waiting-text">Esperando información de la partida...</p>
+
+                <p class="typing-game-waiting-hint">También podés practicar por tu cuenta:</p>
+
+                <button
+                    type="button"
+                    class="typing-game-waiting-button"
+                    click.trigger="startPractice()">
+
+                    INICIAR PRÁCTICA
+
+                </button>
+
+                <ul class="typing-game-waiting-facts">
+                    <li>
+                        <strong>60</strong>
+                        <span>segundos</span>
+                    </li>
+                    <li>
+                        <strong>WPM</strong>
+                        <span>velocidad</span>
+                    </li>
+                    <li>
+                        <strong>100%</strong>
+                        <span>precisión</span>
+                    </li>
+                </ul>
+
+            </div>
 
         </div>
 

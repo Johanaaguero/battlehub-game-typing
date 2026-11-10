@@ -349,7 +349,7 @@ Los puertos de todos los servicios están en [Puertos](#puertos).
 "typing": { "scope": "typingGame", "url": "http://localhost:4001/remoteEntry.js", "module": "./GameModule" }
 ```
 
-Para probarlo juntos: levantar Typing con `docker compose up -d --build` (ver [Cómo correrlo](#cómo-correrlo)) y el Shell con `npm start` en su repo. La API ya permite los orígenes `http://localhost:4000` y `http://localhost:4001`.
+Para probarlo juntos: levantar Typing con `docker compose up -d --build` (ver [Cómo correrlo](#cómo-correrlo)) y el Shell con `npm start` en su repo. La API ya permite los orígenes `http://localhost:4000` y `http://localhost:4001`. Guía paso a paso: [Ejecutar con el Shell](docs/ejecutar-con-shell.md).
 
 El contrato está en el README y en `src/games/game-contracts.ts`, `game-events.ts` y `game-host.ts` del Shell, que ya mezcló su [PR #6](https://github.com/KeynerMC/battlehub-shell/pull/6) en `main` (commit `478f79c`). Typing implementa ese contrato: con una versión anterior del Shell, `initialize()` rechaza el contexto porque no trae `events` ni `mode`.
 
@@ -374,7 +374,7 @@ El modo práctica está integrado con el Shell y permite jugar solo, sin crear u
 
 El Shell lo abre desde el botón **Practicar** del catálogo (ruta `/practice/typing`), solo para los usuarios que tienen el permiso `games.typing.play` según el Profile Service. Le entrega al juego un contexto con `mode: "practice"` y sin `matchId`.
 
-En este modo el juego corre completo en el navegador: no se conecta al hub, no llama a la API, no guarda la partida y no emite `battlehub:game-finished`, porque no hay sala que cerrar. Desde el Shell se puede pausar, reanudar y reiniciar.
+En este modo el juego corre completo en el navegador: no se conecta al hub, no llama a la API, no guarda la partida y no emite `battlehub:game-finished`, porque no hay sala que cerrar. Desde el Shell se puede pausar, reanudar y reiniciar. Hay 8 textos (`src/frontend/src/typing-texts.ts`): cada práctica elige uno al azar y «Volver a jugar» siempre cambia de texto. En una partida de sala, todos los jugadores escriben el mismo texto, que sale del id de la partida; no hace falta que el servidor lo reparta.
 
 #### Modo playground (R-34)
 

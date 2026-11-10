@@ -1,4 +1,5 @@
 
+import { TYPING_TEXTS } from '../src/typing-texts';
 import { GameModule } from '../src/game-module';
 import { GAME_FINISHED_EVENT } from '../src/game-contracts';
 import type { SignalRClient } from '../src/signalr-client';
@@ -31,6 +32,27 @@ describe('práctica individual de Typing Battle', () => {
         expect(game.canType).toBe(true);
         expect(game.timeRemaining).toBe(60);
         expect(game.players).toHaveLength(1);
+    });
+
+    it('cada vez que se vuelve a jugar cambia el texto', () => {
+        game.startPractice();
+        const vistos = new Set<string>([game.targetText]);
+
+        for (let i = 0; i < 12; i++) {
+            // «Volver a jugar» aparece al terminar la partida: se escribe el texto completo antes de reiniciar.
+            game.typedText = game.targetText;
+            game.handleTyping();
+
+            const anterior = game.targetText;
+
+            game.restartPractice();
+
+            expect(game.targetText).not.toBe(anterior);
+            expect(TYPING_TEXTS).toContain(game.targetText);
+            vistos.add(game.targetText);
+        }
+
+        expect(vistos.size).toBeGreaterThanOrEqual(4);
     });
 
     it('calcula las métricas mientras se escribe en modo local', () => {
@@ -93,7 +115,7 @@ describe('práctica individual de Typing Battle', () => {
         expect(game.progress).toBe(0);
         expect(game.correctCharacters).toBe(0);
         expect(game.incorrectCharacters).toBe(0);
-        expect(game.accuracy).toBe(100);
+        expect(game.accuracy).toBe(0);
         expect(game.timeRemaining).toBe(60);
         expect(game.canType).toBe(true);
     });

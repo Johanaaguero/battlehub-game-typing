@@ -13,6 +13,24 @@ typing-game-module {
     min-height: 0;
 }
 
+/*
+ * Con el diseño compacto del Shell (ventana de al menos 1366 × 768 px CSS) el área tiene altura definida y el juego
+ * la llena. En ventanas menores, o con zoom del navegador, el Shell solo le reserva un mínimo de 700 px sin altura
+ * definida: el juego se quedaba en el alto de su contenido y sobraba espacio. Se ocupa ese mínimo (700 px menos el
+ * relleno y el borde del área, 650 px) y la zona de escritura crece con él.
+ */
+@media (width < 1366px), (height < 768px) {
+    game-host typing-game-module {
+        display: flex;
+        flex-direction: column;
+        min-height: 650px;
+    }
+
+    game-host typing-game-module .typing-game {
+        flex: 1 0 auto;
+    }
+}
+
 .typing-game {
     /* Variables del juego: definidas en su raíz para no afectar al Shell. */
     --arena-bg: #050817;
@@ -1341,6 +1359,162 @@ typing-game-module {
 
 .typing-game-refresh-button:hover:not(:disabled) {
     transform: translateY(-1px);
+}
+
+/* ========================================================= */
+
+/* PANTALLA DE ESPERA (playground, antes de iniciar) */
+
+/* ========================================================= */
+
+.typing-game-waiting-message {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+    padding: 1.5rem 0;
+}
+
+.typing-game-waiting-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: min(100%, 460px);
+    padding: 2.25rem 2rem 1.75rem;
+    box-sizing: border-box;
+    text-align: center;
+    border: 1px solid var(--arena-border-light);
+    border-radius: 22px;
+    background:
+        linear-gradient(
+            160deg,
+            rgb(85 120 255 / 12%),
+            transparent 55%
+        ),
+        var(--arena-panel);
+    box-shadow:
+        0 24px 60px rgb(2 5 18 / 55%),
+        inset 0 1px 0 rgb(255 255 255 / 6%);
+}
+
+.typing-game-waiting-icon {
+    display: grid;
+    place-items: center;
+    width: 68px;
+    height: 68px;
+    margin-bottom: 1.1rem;
+    border-radius: 20px;
+    color: var(--arena-cyan);
+    border: 1px solid rgb(66 232 255 / 28%);
+    background:
+        radial-gradient(
+            circle at 30% 20%,
+            rgb(66 232 255 / 22%),
+            rgb(85 120 255 / 10%) 70%
+        );
+    box-shadow: 0 0 32px rgb(66 232 255 / 18%);
+}
+
+.typing-game-waiting-kicker {
+    font-family: Rajdhani, sans-serif;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.22em;
+    color: var(--arena-cyan);
+}
+
+.typing-game-waiting-title {
+    margin: 0.35rem 0 0.6rem;
+    font-family: Rajdhani, sans-serif;
+    font-size: 2.1rem;
+    font-weight: 700;
+    line-height: 1.1;
+    color: var(--arena-white);
+}
+
+.typing-game-waiting-text,
+.typing-game-waiting-hint {
+    margin: 0;
+    line-height: 1.5;
+}
+
+.typing-game-waiting-text {
+    font-size: 0.9rem;
+    color: var(--arena-muted);
+}
+
+.typing-game-waiting-hint {
+    margin-top: 0.15rem;
+    font-size: 1rem;
+    color: var(--arena-text);
+}
+
+.typing-game-waiting-button {
+    margin-top: 1.4rem;
+    padding: 0.85rem 2.2rem;
+    border: none;
+    border-radius: 14px;
+    cursor: pointer;
+    background:
+        linear-gradient(
+            135deg,
+            #5578ff,
+            #8758ff
+        );
+    color: white;
+    font-family: Rajdhani, sans-serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    box-shadow:
+        0 12px 30px rgb(85 120 255 / 38%),
+        inset 0 1px 0 rgb(255 255 255 / 22%);
+    transition:
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.typing-game-waiting-button:hover {
+    transform: translateY(-2px);
+    box-shadow:
+        0 16px 38px rgb(85 120 255 / 50%),
+        inset 0 1px 0 rgb(255 255 255 / 28%);
+}
+
+.typing-game-waiting-button:focus-visible {
+    outline: 2px solid var(--arena-cyan);
+    outline-offset: 3px;
+}
+
+.typing-game-waiting-facts {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.6rem;
+    width: 100%;
+    margin: 1.6rem 0 0;
+    padding: 1.1rem 0 0;
+    list-style: none;
+    border-top: 1px solid var(--arena-border);
+}
+
+.typing-game-waiting-facts li {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.typing-game-waiting-facts strong {
+    font-family: Rajdhani, sans-serif;
+    font-size: 1.35rem;
+    color: var(--arena-white);
+}
+
+.typing-game-waiting-facts span {
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--arena-muted);
 }
 
 /* ========================================================= */
